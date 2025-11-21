@@ -1,0 +1,143 @@
+/* Пользовательские утилиты */
+@layer utilities {
+  .grayscale-global {
+    filter: grayscale(100%);
+    transition: filter 0.5s ease-in-out;
+  }
+  .grayscale-global > * {
+    filter: none !important;
+  }
+  
+  .grayscale-0 {
+    filter: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}
+
+/* Устанавливаем шрифты и переходную анимацию тема‑смены */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+/* По умолчанию включаем светлую тему */
+html {
+  /* Значение берётся из ключей theme.json: "incoelLight" или "incoelDark" */
+  /* Здесь — светлая тема при старте */
+  data-theme: incoelDark;
+}
+
+#root {
+  text-align: center;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  transition: background-color 1s ease, color 1s ease;
+}
+
+h1 {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  text-transform: uppercase;
+}
+
+h2 {
+  font-size: 1.5rem;
+  line-height: 1.75rem;
+  text-transform: uppercase;
+}
+
+.container {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 80rem; /* 1280px */
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.mouse-loader {
+  width: 24px;
+  height: 40px;
+  box-sizing: border-box;
+  border: 2px solid oklch(var(--p) / var(--tw-bg-opacity,1));
+  position: relative;
+  border-radius: 50% 50% 50% 50% / 25% 25% 25% 25%;
+}
+
+.mouse-loader::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, 50%);
+  width: 5px;
+  height: 5px;
+  background: oklch(var(--p) / var(--tw-bg-opacity,1));
+  border-radius: 50%;
+  animation: fadeDown 1s ease-out infinite;
+}
+
+@keyframes fadeDown {
+  0% {
+    top: 0%;
+    opacity: 1;
+  }
+  100% {
+    top: 60%;
+    opacity: 0;
+  }
+}
+
+.log_loader {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: block;
+  margin: 15px auto;
+  color: oklch(var(--p) / var(--tw-bg-opacity,1));
+  box-sizing: border-box;
+  animation: animloader 2s linear infinite;
+}
+
+@keyframes animloader {
+  0% {
+    box-shadow: 14px 0 0 -2px, 38px 0 0 -2px, -14px 0 0 -2px, -38px 0 0 -2px;
+  }
+  25% {
+    box-shadow: 14px 0 0 -2px, 38px 0 0 -2px, -14px 0 0 -2px, -38px 0 0 2px;
+  }
+  50% {
+    box-shadow: 14px 0 0 -2px, 38px 0 0 -2px, -14px 0 0 2px, -38px 0 0 -2px;
+  }
+  75% {
+    box-shadow: 14px 0 0 2px, 38px 0 0 -2px, -14px 0 0 -2px, -38px 0 0 -2px;
+  }
+  100% {
+    box-shadow: 14px 0 0 -2px, 38px 0 0 2px, -14px 0 0 -2px, -38px 0 0 -2px;
+  }
+}
+
+/* Конец App.css */
