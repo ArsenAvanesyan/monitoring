@@ -2,7 +2,7 @@ const cors = require('cors');
 require("dotenv").config();
 const express = require("express");
 const serverConfig = require("./config/serverConfig");
-const indexRouter = require("./routes/index.routes");
+// const indexRouter = require("./routes/index.routes");
 const PORT = process.env.PORT ?? 3000;
 const path = require('path');
 const cookieParser = require('cookie-parser');
@@ -20,7 +20,7 @@ serverConfig(app);
 app.use(cookieParser());
 
 //мaршрутизация
-app.use("/api", indexRouter);
+// app.use("/api", indexRouter);
 app.use('/images', express.static(path.join(__dirname, '../public/images')));
 
 app.get("/", (req, res) => {
