@@ -1,3 +1,9 @@
+/* App.css */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* Пользовательские утилиты */
 @layer utilities {
   .grayscale-global {
@@ -25,6 +31,21 @@
   }
 }
 
+@keyframes logFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-log-fade {
+  animation: logFade 0.4s ease-out forwards;
+}
+
 .animate-slide-down {
   animation: slide-down 0.3s ease-out;
 }
@@ -34,11 +55,11 @@
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
 }
 
-/* По умолчанию включаем светлую тему */
+/* По умолчанию включаем темную тему */
 html {
-  /* Значение берётся из ключей theme.json: "incoelLight" или "incoelDark" */
-  /* Здесь — светлая тема при старте */
-  data-theme: incoelDark;
+  /* Значение берётся из ключей theme.json: "monLight" или "monDark" */
+  /* Здесь — темная тема при старте */
+  data-theme: monDark;
 }
 
 #root {
@@ -122,6 +143,22 @@ h2 {
   animation: animloader 2s linear infinite;
 }
 
+@keyframes support-bell {
+  0%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(-15deg); }
+  20% { transform: rotate(10deg); }
+  30% { transform: rotate(-10deg); }
+  40% { transform: rotate(6deg); }
+  50% { transform: rotate(-4deg); }
+  60% { transform: rotate(2deg); }
+  70% { transform: rotate(-1deg); }
+  80% { transform: rotate(1deg); }
+  90% { transform: rotate(0deg); }
+}
+.animate-support-bell {
+  animation: support-bell 1.2s linear infinite;
+}
+
 @keyframes animloader {
   0% {
     box-shadow: 14px 0 0 -2px, 38px 0 0 -2px, -14px 0 0 -2px, -38px 0 0 -2px;
@@ -141,3 +178,13 @@ h2 {
 }
 
 /* Конец App.css */
+
+/* Мигание текста IP как у лампы (переключение success/error) */
+@keyframes blinkColor {
+  0%, 50% { color: hsl(var(--su)); }
+  51%, 100% { color: hsl(var(--er)); }
+}
+
+.blink-text {
+  animation: blinkColor 0.4s infinite steps(1);
+}
