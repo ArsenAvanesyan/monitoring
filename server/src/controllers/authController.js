@@ -10,8 +10,7 @@ exports.signUp = async (req, res) => {
         const {
             login,
             password,
-            email,
-            photo
+            email
         } = req.body;
 
         // Проверка заполненности полей
@@ -54,8 +53,7 @@ exports.signUp = async (req, res) => {
             login: login.trim(),
             password: hashedPassword,
             email: normalizedEmail,
-            token,
-            photo: photo ? photo.trim() : null
+            token
         });
 
         // Удаляем пароль из ответа

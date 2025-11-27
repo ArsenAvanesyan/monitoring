@@ -8,12 +8,19 @@ exports.updateUser = async (req, res) => {
         console.log('Получены данные для обновления:', req.body);
         console.log('ID пользователя:', res.locals.user.id);
 
-        const { userData } = req.body;
         const updateData = {};
+        const bcrypt = require('bcryptjs');
 
         // Основные поля профиля
         if ('login' in req.body) updateData.login = req.body.login;
         if ('email' in req.body) updateData.email = req.body.email;
+
+        // Обработка пароля
+        if ('password' in req.body && req.body.password) {
+            updateData.password = await bcrypt.hash(req.body.password, 8);
+        }
+
+        // Фото обновляется только через отдельный endpoint /avatar с multer
 
         console.log('Данные для обновления в БД:', updateData);
 
@@ -25,7 +32,7 @@ exports.updateUser = async (req, res) => {
         console.log('Обновленный пользователь из БД:', user);
 
         if (!user) {
-            res.status(404).json({ message: "Пользователь не найден" });
+            return res.status(404).json({ message: "Пользователь не найден" });
         }
         res.status(200).json({ user });
     } catch (error) {

@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { SearchIcon, BellIcon, SunIcon, MoonIcon, UserIcon } from '../svg/icons';
 import { loadTheme } from '../utils/themeLoader';
+import { useAuth } from '../context/AuthContext';
 import NotificationsModal from './NotificationsModal';
 
 const Header = () => {
+    const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [notificationCount] = useState(3); // Можно заменить на реальные данные
@@ -87,17 +89,29 @@ const Header = () => {
                         </button>
 
                         {/* User Profile */}
-                        <Link
-                            to="/profile"
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-base-300 transition-colors"
-                        >
-                            <div className="avatar placeholder">
-                                <div className="bg-primary text-primary-content rounded-full w-10">
-                                    <span className="text-sm font-semibold">JD</span>
-                                </div>
-                            </div>
-                            <span className="hidden md:block font-medium">John Doe</span>
-                        </Link>
+                        {user && (
+                            <Link
+                                to="/profile"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-base-300 transition-colors"
+                            >
+                                {user.photo ? (
+                                    <div className="avatar">
+                                        <div className="w-10 rounded-full">
+                                            <img src={user.photo} alt={user.login} />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="avatar placeholder">
+                                        <div className="bg-primary text-primary-content rounded-full w-10">
+                                            <span className="text-sm font-semibold">
+                                                {user.login ? user.login.substring(0, 2).toUpperCase() : 'U'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                                <span className="hidden md:block font-medium">{user.login || 'User'}</span>
+                            </Link>
+                        )}
                     </div>
                 </div>
             </header>
