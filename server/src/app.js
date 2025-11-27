@@ -20,7 +20,8 @@ serverConfig(app);
 app.use(cookieParser());
 
 //мaршрутизация
-// app.use("/api", indexRouter);
+const indexRouter = require("./routes/index.routes");
+app.use("/api", indexRouter);
 app.use('/images', express.static(path.join(__dirname, '../public/images')));
 
 app.get("/", (req, res) => {
