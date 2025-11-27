@@ -109,10 +109,28 @@ export const AuthProvider = ({ children }) => {
   const updateAvatar = async (file) => {
     try {
       const response = await authService.updateAvatar(file);
-      setUser(response.user);
+      // Обновляем пользователя из ответа
+      if (response.user) {
+        setUser(response.user);
+      } else {
+        // Если пользователь не пришел в ответе, запрашиваем его заново
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+      }
       return response;
     } catch (error) {
       throw error.response?.data || { message: 'Ошибка обновления аватара' };
+    }
+  };
+
+  // Обновление токена пользователя
+  const refreshUserToken = async () => {
+    try {
+      const response = await authService.refreshUserToken();
+      setUser(response.user);
+      return response;
+    } catch (error) {
+      throw error.response?.data || { message: 'Ошибка обновления токена' };
     }
   };
 
@@ -125,6 +143,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     updateAvatar,
+    refreshUserToken,
     isAuthenticated: !!user,
   };
 

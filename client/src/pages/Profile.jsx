@@ -1,16 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../utils/imageUrl';
 
 const Profile = () => {
-  const { user, updateProfile, updateAvatar, logout } = useAuth();
+  const { user, updateProfile, updateAvatar, logout, refreshUserToken } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [imageError, setImageError] = useState(false);
+  const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     login: '',
     email: '',
+    oldPassword: '',
     password: '',
     confirmPassword: '',
   });
@@ -20,9 +24,12 @@ const Profile = () => {
       setFormData({
         login: user.login || '',
         email: user.email || '',
+        oldPassword: '',
         password: '',
         confirmPassword: '',
       });
+      // Сбрасываем ошибку изображения при обновлении пользователя
+      setImageError(false);
     }
   }, [user]);
 
@@ -32,6 +39,12 @@ const Profile = () => {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleAvatarClick = () => {
+    if (isEditing) {
+      fileInputRef.current?.click();
+    }
   };
 
   const handleFileChange = async (e) => {
@@ -45,12 +58,32 @@ const Profile = () => {
 
     setLoading(true);
     setError('');
+    setImageError(false); // Сбрасываем ошибку изображения
     try {
-      await updateAvatar(file);
+      const response = await updateAvatar(file);
+      console.log('Avatar updated, user:', response.user);
       setSuccess('Фото успешно обновлено');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message || 'Ошибка загрузки фото');
+    } finally {
+      setLoading(false);
+      // Очищаем input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRefreshToken = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await refreshUserToken();
+      setSuccess(response.message || 'Токен успешно обновлен');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || 'Ошибка обновления токена');
     } finally {
       setLoading(false);
     }
@@ -61,14 +94,22 @@ const Profile = () => {
     setError('');
     setSuccess('');
 
-    if (formData.password && formData.password !== formData.confirmPassword) {
-      setError('Пароли не совпадают');
-      return;
-    }
+    // Валидация пароля
+    if (formData.password) {
+      if (!formData.oldPassword) {
+        setError('Для смены пароля необходимо указать старый пароль');
+        return;
+      }
 
-    if (formData.password && formData.password.length < 6) {
-      setError('Пароль должен быть не менее 6 символов');
-      return;
+      if (formData.password !== formData.confirmPassword) {
+        setError('Пароли не совпадают');
+        return;
+      }
+
+      if (formData.password.length < 6) {
+        setError('Пароль должен быть не менее 6 символов');
+        return;
+      }
     }
 
     setLoading(true);
@@ -81,11 +122,19 @@ const Profile = () => {
 
       if (formData.password) {
         updateData.password = formData.password;
+        updateData.oldPassword = formData.oldPassword;
       }
 
       await updateProfile(updateData);
       setSuccess('Профиль успешно обновлен');
       setIsEditing(false);
+      setFormData({
+        login: user.login || '',
+        email: user.email || '',
+        oldPassword: '',
+        password: '',
+        confirmPassword: '',
+      });
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError(err.message || 'Ошибка обновления профиля');
@@ -130,10 +179,21 @@ const Profile = () => {
         <div className="card bg-base-200 shadow-xl mb-6">
           <div className="card-body">
             <div className="flex items-center gap-6 mb-6">
-              <div className="avatar">
-                {user.photo ? (
+              <div
+                className={`avatar ${isEditing ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                onClick={handleAvatarClick}
+                title={isEditing ? 'Нажмите, чтобы изменить фото' : ''}
+              >
+                {user.photo && !imageError ? (
                   <div className="w-24 rounded-full">
-                    <img src={user.photo} alt={user.login} />
+                    <img
+                      src={getImageUrl(user.photo)}
+                      alt={user.login}
+                      onError={() => {
+                        console.error('Failed to load image:', user.photo);
+                        setImageError(true);
+                      }}
+                    />
                   </div>
                 ) : (
                   <div className="bg-primary text-primary-content rounded-full w-24">
@@ -141,10 +201,47 @@ const Profile = () => {
                   </div>
                 )}
               </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
               <div>
                 <h2 className="text-2xl font-bold">{user.login}</h2>
                 <p className="text-base-content/70">{user.email}</p>
               </div>
+            </div>
+
+            <div className="divider"></div>
+
+            {/* Token Section */}
+            <div className="mb-6">
+              <label className="label">
+                <span className="label-text font-semibold">Токен</span>
+              </label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="text"
+                  value={user.token || ''}
+                  className="input input-bordered w-full bg-base-100 font-mono text-sm"
+                  readOnly
+                />
+                <button
+                  type="button"
+                  className={`btn btn-info ${loading ? 'loading' : ''}`}
+                  onClick={handleRefreshToken}
+                  disabled={loading}
+                >
+                  Refresh Token
+                </button>
+              </div>
+              <label className="label">
+                <span className="label-text-alt text-base-content/50">
+                  Токен можно обновить только раз в сутки
+                </span>
+              </label>
             </div>
 
             <div className="divider"></div>
@@ -181,54 +278,55 @@ const Profile = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="label">
-                    <span className="label-text font-semibold">Новый пароль</span>
-                  </label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Оставьте пустым, чтобы не менять"
-                    className="input input-info input-bordered w-full bg-base-100"
-                    disabled={!isEditing}
-                  />
-                </div>
+                {isEditing && (
+                  <>
+                    <div>
+                      <label className="label">
+                        <span className="label-text font-semibold">Старый пароль</span>
+                      </label>
+                      <input
+                        type="password"
+                        name="oldPassword"
+                        value={formData.oldPassword}
+                        onChange={handleChange}
+                        placeholder="Введите старый пароль для смены"
+                        className="input input-info input-bordered w-full bg-base-100"
+                        disabled={!isEditing}
+                      />
+                    </div>
 
-                {isEditing && formData.password && (
-                  <div>
-                    <label className="label">
-                      <span className="label-text font-semibold">Подтвердите пароль</span>
-                    </label>
-                    <input
-                      type="password"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      className="input input-info input-bordered w-full bg-base-100"
-                      disabled={!isEditing}
-                    />
-                  </div>
+                    <div>
+                      <label className="label">
+                        <span className="label-text font-semibold">Новый пароль</span>
+                      </label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Оставьте пустым, чтобы не менять"
+                        className="input input-info input-bordered w-full bg-base-100"
+                        disabled={!isEditing}
+                      />
+                    </div>
+
+                    {formData.password && (
+                      <div>
+                        <label className="label">
+                          <span className="label-text font-semibold">Подтвердите новый пароль</span>
+                        </label>
+                        <input
+                          type="password"
+                          name="confirmPassword"
+                          value={formData.confirmPassword}
+                          onChange={handleChange}
+                          className="input input-info input-bordered w-full bg-base-100"
+                          disabled={!isEditing}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
-
-                <div className="md:col-span-2">
-                  <label className="label">
-                    <span className="label-text font-semibold">Фото профиля</span>
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="file-input file-input-bordered file-input-info w-full bg-base-100"
-                    disabled={!isEditing || loading}
-                  />
-                  <label className="label">
-                    <span className="label-text-alt text-base-content/50">
-                      Загрузите изображение для вашего профиля
-                    </span>
-                  </label>
-                </div>
               </div>
 
               <div className="mt-6 flex gap-3">
@@ -257,6 +355,7 @@ const Profile = () => {
                         setFormData({
                           login: user.login || '',
                           email: user.email || '',
+                          oldPassword: '',
                           password: '',
                           confirmPassword: '',
                         });

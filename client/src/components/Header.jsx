@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { SearchIcon, BellIcon, SunIcon, MoonIcon, UserIcon } from '../svg/icons';
 import { loadTheme } from '../utils/themeLoader';
 import { useAuth } from '../context/AuthContext';
+import { getImageUrl } from '../utils/imageUrl';
 import NotificationsModal from './NotificationsModal';
 
 const Header = () => {
@@ -10,6 +11,7 @@ const Header = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [notificationCount] = useState(3); // Можно заменить на реальные данные
+    const [imageError, setImageError] = useState(false);
     const [theme, setTheme] = useState(() => {
         // Получаем сохраненную тему из localStorage или используем первую по умолчанию
         if (typeof window !== 'undefined') {
@@ -24,6 +26,13 @@ const Header = () => {
         loadTheme(theme);
         localStorage.setItem('theme', theme);
     }, [theme]);
+
+    // Сбрасываем ошибку изображения при обновлении пользователя
+    useEffect(() => {
+        if (user) {
+            setImageError(false);
+        }
+    }, [user]);
 
     const toggleTheme = () => {
         setTheme((prevTheme) => {
@@ -94,10 +103,17 @@ const Header = () => {
                                 to="/profile"
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-base-300 transition-colors"
                             >
-                                {user.photo ? (
+                                {user.photo && !imageError ? (
                                     <div className="avatar">
                                         <div className="w-10 rounded-full">
-                                            <img src={user.photo} alt={user.login} />
+                                            <img
+                                                src={getImageUrl(user.photo)}
+                                                alt={user.login}
+                                                onError={() => {
+                                                    console.error('Failed to load image:', user.photo);
+                                                    setImageError(true);
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 ) : (

@@ -32,6 +32,10 @@ module.exports = (sequelize, DataTypes) => {
     photo: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    lastTokenRefresh: {
+      type: DataTypes.DATE,
+      allowNull: true,
     }
   }, {
     sequelize,

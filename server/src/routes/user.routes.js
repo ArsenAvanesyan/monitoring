@@ -1,4 +1,4 @@
-const { updateUser, getAllUsers, getUserById, updateAvatarUser, getCurrentUser } = require("../controllers/userController");
+const { updateUser, getAllUsers, getUserById, updateAvatarUser, getCurrentUser, refreshUserToken } = require("../controllers/userController");
 
 const verifyAccessToken = require("../middleware/verifyAccessToken");
 const { upload } = require("../utils/upload");
@@ -7,6 +7,7 @@ const userRouter = require("express").Router();
 userRouter
     .put("/avatar", verifyAccessToken, upload.single("avatar"), updateAvatarUser)
     .put("/", verifyAccessToken, updateUser)
+    .post("/refresh-token", verifyAccessToken, refreshUserToken)
     .get("/", getAllUsers)
     .get("/me", verifyAccessToken, getCurrentUser);
 

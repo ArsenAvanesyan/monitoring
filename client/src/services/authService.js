@@ -87,6 +87,12 @@ export const authService = {
     });
     return response.data;
   },
+
+  // Обновление токена пользователя
+  refreshUserToken: async () => {
+    const response = await api.post('/users/refresh-token');
+    return response.data;
+  },
 };
 
 export default authService;
