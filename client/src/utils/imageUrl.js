@@ -18,10 +18,7 @@ export const getImageUrl = (imagePath) => {
     // Убеждаемся, что путь начинается с /
     const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
 
-    const fullUrl = `${SERVER_BASE}${cleanPath}`;
-    console.log('Image URL generated:', { imagePath, SERVER_BASE, cleanPath, fullUrl });
-
-    return fullUrl;
+    return `${SERVER_BASE}${cleanPath}`;
 };
 
 export default getImageUrl;

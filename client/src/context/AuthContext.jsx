@@ -18,6 +18,18 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
   const navigate = useNavigate();
 
+  // Слушатель изменений токена в localStorage (для автоматического обновления)
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'accessToken') {
+        setAccessToken(e.newValue);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   // Проверка авторизации при загрузке
   useEffect(() => {
     const checkAuth = async () => {
@@ -30,11 +42,27 @@ export const AuthProvider = ({ children }) => {
             const userData = await authService.getCurrentUser();
             setUser(userData);
           } catch (error) {
-            // Если не удалось получить пользователя, очищаем токен
-            console.error('Failed to get user:', error);
-            localStorage.removeItem('accessToken');
-            setAccessToken(null);
-            setUser(null);
+            // Если не удалось получить пользователя, пробуем обновить токен
+            console.error('Failed to get user, trying to refresh token:', error);
+            try {
+              const refreshResponse = await authService.refreshToken();
+              if (refreshResponse.accessToken) {
+                setAccessToken(refreshResponse.accessToken);
+                localStorage.setItem('accessToken', refreshResponse.accessToken);
+                if (refreshResponse.user) {
+                  setUser(refreshResponse.user);
+                } else {
+                  const userData = await authService.getCurrentUser();
+                  setUser(userData);
+                }
+              }
+            } catch (refreshError) {
+              // Если не удалось обновить токен, очищаем данные
+              console.error('Failed to refresh token:', refreshError);
+              localStorage.removeItem('accessToken');
+              setAccessToken(null);
+              setUser(null);
+            }
           }
         }
       } catch (error) {

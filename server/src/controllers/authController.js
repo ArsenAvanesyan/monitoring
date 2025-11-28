@@ -64,7 +64,7 @@ exports.signUp = async (req, res) => {
 
         res.status(201).cookie(jwtConfig.refresh.type, refreshToken, {
             httpOnly: true,
-            maxAge: jwtConfig.refresh.expiresIn,
+            maxAge: jwtConfig.refresh.expiresInMs,
             sameSite: 'lax',
             secure: false
         }).json({ user, accessToken });
@@ -110,7 +110,7 @@ exports.signIn = async (req, res) => {
 
         res.status(200).cookie(jwtConfig.refresh.type, refreshToken, {
             httpOnly: true,
-            maxAge: jwtConfig.refresh.expiresIn,
+            maxAge: jwtConfig.refresh.expiresInMs,
             sameSite: 'lax',
             secure: false
         }).json({ user, accessToken });
@@ -145,7 +145,7 @@ exports.refreshToken = async (req, res) => {
 
         res.cookie(jwtConfig.refresh.type, refreshToken, {
             httpOnly: true,
-            maxAge: jwtConfig.refresh.expiresIn,
+            maxAge: jwtConfig.refresh.expiresInMs,
             sameSite: 'lax',
             secure: false
         }).json({ user, accessToken });

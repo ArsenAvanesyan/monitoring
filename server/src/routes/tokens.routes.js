@@ -10,7 +10,9 @@ tokensRouter.get("/refresh", verifyRefreshToken, (req, res) => {
     res
         .cookie(jwtConfig.refresh.type, refreshToken, {
             httpOnly: true,
-            maxAge: jwtConfig.refresh.expiresIn,
+            maxAge: jwtConfig.refresh.expiresInMs,
+            sameSite: 'lax',
+            secure: false
         })
         .json({ user, accessToken });
 });

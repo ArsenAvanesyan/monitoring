@@ -60,8 +60,7 @@ const Profile = () => {
     setError('');
     setImageError(false); // Сбрасываем ошибку изображения
     try {
-      const response = await updateAvatar(file);
-      console.log('Avatar updated, user:', response.user);
+      await updateAvatar(file);
       setSuccess('Фото успешно обновлено');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
@@ -83,7 +82,16 @@ const Profile = () => {
       setSuccess(response.message || 'Токен успешно обновлен');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message || 'Ошибка обновления токена');
+      // Обрабатываем разные типы ошибок
+      const errorMessage = err.response?.data?.message || err.message || 'Ошибка обновления токена';
+      setError(errorMessage);
+
+      // Если ошибка 429 (слишком много запросов), показываем более понятное сообщение
+      if (err.response?.status === 429) {
+        setError(errorMessage);
+      } else if (err.response?.status === 401) {
+        setError('Сессия истекла. Пожалуйста, войдите снова.');
+      }
     } finally {
       setLoading(false);
     }

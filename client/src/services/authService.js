@@ -24,17 +24,102 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor для обработки ошибок авторизации
+// Interceptor для обработки ошибок авторизации и автоматического обновления токена
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    const originalRequest = error.config;
+
+    // Если ошибка 401 и это не запрос на обновление access token
+    // Исключаем /auth/refresh и /auth/signin, /auth/signup чтобы избежать бесконечного цикла
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/refresh') ||
+      originalRequest.url?.includes('/auth/signin') ||
+      originalRequest.url?.includes('/auth/signup');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+      if (isRefreshing) {
+        // Если токен уже обновляется, добавляем запрос в очередь
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then(token => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch(err => {
+            return Promise.reject(err);
+          });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Пытаемся обновить access token через refresh token
+        // Используем прямой axios запрос без Authorization заголовка, так как refresh token в cookies
+        console.log('Attempting to refresh access token...');
+        const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
+          withCredentials: true,
+        });
+        const { accessToken } = response.data;
+
+        if (!accessToken) {
+          throw new Error('Access token not received from refresh endpoint');
+        }
+
+        localStorage.setItem('accessToken', accessToken);
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+        // Уведомляем о обновлении токена через событие
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'accessToken',
+          newValue: accessToken,
+          oldValue: localStorage.getItem('accessToken')
+        }));
+
+        processQueue(null, accessToken);
+        isRefreshing = false;
+
+        console.log('Access token refreshed successfully, retrying original request:', originalRequest.url);
+        // Повторяем оригинальный запрос с новым токеном
+        return api(originalRequest);
+      } catch (refreshError) {
+        console.error('Failed to refresh access token:', refreshError);
+        processQueue(refreshError, null);
+        isRefreshing = false;
+
+        // Если не удалось обновить токен, очищаем данные и перенаправляем на логин
+        localStorage.removeItem('accessToken');
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // Для других ошибок (403 и т.д.)
+    if (error.response?.status === 403) {
       localStorage.removeItem('accessToken');
-      // Не перенаправляем, если мы уже на странице логина
       if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
         window.location.href = '/login';
       }
     }
+
     return Promise.reject(error);
   }
 );
