@@ -1,10 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider, useAuth } from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
-import Register from './pages/Register'
+// import Register from './pages/Register' // Регистрация отключена
 import Profile from './pages/Profile'
 import Dashboard from './pages/Dashboard'
 import Devices from './pages/Devices'
@@ -16,12 +16,6 @@ import Settings from './pages/Settings'
 import './App.css'
 
 const AppLayout = () => {
-  const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
   return (
     <>
       <Header />
@@ -37,7 +31,14 @@ const AppLayout = () => {
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/profile" element={<Profile />} />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </main>
@@ -54,14 +55,11 @@ function App() {
         <div className="App">
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            {/* Регистрация отключена */}
+            {/* <Route path="/register" element={<Register />} /> */}
             <Route
               path="/*"
-              element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }
+              element={<AppLayout />}
             />
           </Routes>
         </div>

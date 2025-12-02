@@ -12,8 +12,11 @@ export const getImageUrl = (imagePath) => {
     }
 
     // Формируем полный URL используя базовый URL API (без /api)
-    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-    const SERVER_BASE = API_BASE.replace('/api', '');
+    const API_BASE = import.meta.env.VITE_API_URL || 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://localhost:3000/api' 
+        : '/api');
+    const SERVER_BASE = API_BASE.replace('/api', '') || '';
 
     // Убеждаемся, что путь начинается с /
     const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
