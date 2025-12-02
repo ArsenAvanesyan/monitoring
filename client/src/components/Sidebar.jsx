@@ -1,34 +1,46 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { DashboardIcon, DevicesIcon, PoolsIcon, WorkersIcon, SettingsIcon } from '../svg/icons';
+import { useTranslation } from 'react-i18next';
+import { DashboardIcon, DevicesIcon, PoolsIcon, WorkersIcon, SettingsIcon, AlertsIcon, MaintenanceIcon } from '../svg/icons';
 
 const Sidebar = () => {
   const location = useLocation();
+  const { t } = useTranslation();
 
   const menuItems = [
     {
       path: '/dashboard',
-      label: 'Dashboard',
+      label: t('sidebar.dashboard'),
       icon: DashboardIcon,
     },
     {
       path: '/devices',
-      label: 'Devices',
+      label: t('sidebar.devices'),
       icon: DevicesIcon,
     },
     {
       path: '/pools',
-      label: 'Pools',
+      label: t('sidebar.pools'),
       icon: PoolsIcon,
     },
     {
       path: '/workers',
-      label: 'Workers',
+      label: t('sidebar.workers'),
       icon: WorkersIcon,
     },
     {
+      path: '/alerts',
+      label: t('sidebar.alerts'),
+      icon: AlertsIcon,
+    },
+    {
+      path: '/maintenance',
+      label: t('sidebar.maintenance'),
+      icon: MaintenanceIcon,
+    },
+    {
       path: '/settings',
-      label: 'Settings',
+      label: t('sidebar.settings'),
       icon: SettingsIcon,
     },
   ];
@@ -38,7 +50,7 @@ const Sidebar = () => {
   };
 
   return (
-    <aside className="w-64 min-h-screen bg-base-200 text-base-content border-r border-accent">
+    <aside className="w-64 min-h-screen bg-base-200 text-primary border-r border-accent">
       <div className="flex flex-col h-full">
         {/* Navigation Menu */}
         <nav className="flex-1 p-4">
@@ -55,7 +67,7 @@ const Sidebar = () => {
                       flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-primary
                       ${active
                         ? 'bg-secondary text-accent-content font-semibold'
-                        : 'text-base-content hover:bg-base-300'
+                        : 'text-primary hover:bg-base-300'
                       }
                     `}
                   >

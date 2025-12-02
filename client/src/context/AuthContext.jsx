@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 
 const AuthContext = createContext(null);
@@ -16,7 +15,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessToken, setAccessToken] = useState(null);
-  const navigate = useNavigate();
 
   // Слушатель изменений токена в localStorage (для автоматического обновления)
   useEffect(() => {
@@ -111,14 +109,14 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setAccessToken(null);
       localStorage.removeItem('accessToken');
-      navigate('/login');
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
       // Даже если запрос не удался, очищаем локальные данные
       setUser(null);
       setAccessToken(null);
       localStorage.removeItem('accessToken');
-      navigate('/login');
+      window.location.href = '/login';
     }
   };
 

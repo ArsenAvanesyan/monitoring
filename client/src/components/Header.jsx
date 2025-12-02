@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { SearchIcon, BellIcon, SunIcon, MoonIcon, UserIcon } from '../svg/icons';
 import { loadTheme } from '../utils/themeLoader';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +9,7 @@ import NotificationsModal from './NotificationsModal';
 
 const Header = () => {
     const { user } = useAuth();
+    const { t, i18n } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [notificationCount] = useState(3); // Можно заменить на реальные данные
@@ -54,14 +56,14 @@ const Header = () => {
                     <form onSubmit={handleSearch} className="flex-1 max-w-md">
                         <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <SearchIcon className="w-5 h-5 text-base-content/50" />
+                                <SearchIcon className="w-5 h-5 text-primary" />
                             </div>
                             <input
                                 type="text"
-                                placeholder="Search devices, workers, pools..."
+                                placeholder={t('common.search')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="input input-bordered rounded-lg w-full pl-6 bg-base-100 border-base-300 focus:border-primary"
+                                className="input input-bordered rounded-lg w-full pl-6 bg-base-100 border-base-300 focus:border-primary text-primary"
                             />
                         </div>
                     </form>
@@ -75,7 +77,7 @@ const Header = () => {
                                 className="btn btn-ghost btn-circle relative"
                                 aria-label="Notifications"
                             >
-                                <BellIcon className="w-5 h-5" />
+                                <BellIcon className="w-5 h-5 text-primary" />
                                 {notificationCount > 0 && (
                                     <span className="absolute top-0 right-0 w-5 h-5 bg-error text-error-content rounded-full text-xs flex items-center justify-center">
                                         {notificationCount}
@@ -84,10 +86,25 @@ const Header = () => {
                             </button>
                         </div>
 
+                        {/* Language Toggle */}
+                        <button
+                            onClick={() => {
+                                const newLang = i18n.language === 'ru' ? 'en' : 'ru';
+                                i18n.changeLanguage(newLang);
+                                localStorage.setItem('language', newLang);
+                            }}
+                            className="btn btn-ghost btn-circle"
+                            aria-label="Toggle language"
+                        >
+                            <span className="text-xl text-primary">
+                                {i18n.language === 'ru' ? 'RU' : 'EN'}
+                            </span>
+                        </button>
+
                         {/* Theme Toggle */}
                         <button
                             onClick={toggleTheme}
-                            className="btn btn-ghost btn-circle"
+                            className="btn btn-ghost btn-circle text-primary"
                             aria-label="Toggle theme"
                         >
                             {theme === 'monDark' ? (
@@ -101,7 +118,7 @@ const Header = () => {
                         {user && (
                             <Link
                                 to="/profile"
-                                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-base-300 transition-colors"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-base-300 transition-colors text-primary"
                             >
                                 {user.photo && !imageError ? (
                                     <div className="avatar">
@@ -125,7 +142,7 @@ const Header = () => {
                                         </div>
                                     </div>
                                 )}
-                                <span className="hidden md:block font-medium">{user.login || 'User'}</span>
+                                <span className="hidden md:block font-medium">{user.login || t('common.user')}</span>
                             </Link>
                         )}
                     </div>

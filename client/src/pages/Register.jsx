@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
+    const { t } = useTranslation();
     const [login, setLogin] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -29,10 +31,10 @@ const Register = () => {
     const validateLogin = (value) => {
         const trimmed = value.trim();
         if (!trimmed) {
-            return 'Поле не должно быть пустым';
+            return t('auth.register.validation.fieldEmpty');
         }
         if (value.includes(' ')) {
-            return 'Логин не должен содержать пробелы';
+            return t('auth.register.validation.loginNoSpaces');
         }
         return null;
     };
@@ -41,10 +43,10 @@ const Register = () => {
     const validateEmailField = (value) => {
         const trimmed = value.trim();
         if (!trimmed) {
-            return 'Поле не должно быть пустым';
+            return t('auth.register.validation.fieldEmpty');
         }
         if (!validateEmail(trimmed)) {
-            return 'Некорректный формат email';
+            return t('auth.register.validation.emailInvalid');
         }
         return null;
     };
@@ -52,10 +54,10 @@ const Register = () => {
     // Валидация пароля
     const validatePassword = (value) => {
         if (!value) {
-            return 'Поле не должно быть пустым';
+            return t('auth.register.validation.fieldEmpty');
         }
         if (value.length < 6) {
-            return 'Пароль должен быть не менее 6 символов';
+            return t('auth.register.validation.passwordMin');
         }
         return null;
     };
@@ -63,10 +65,10 @@ const Register = () => {
     // Валидация подтверждения пароля
     const validateConfirmPassword = (value, passwordValue) => {
         if (!value) {
-            return 'Поле не должно быть пустым';
+            return t('auth.register.validation.fieldEmpty');
         }
         if (passwordValue && value !== passwordValue) {
-            return 'Пароли не совпадают';
+            return t('auth.register.validation.passwordsNotMatch');
         }
         return null;
     };
@@ -102,7 +104,7 @@ const Register = () => {
             await signUp(login, email, password);
             navigate('/dashboard');
         } catch (err) {
-            setError(err.message || 'Ошибка регистрации. Попробуйте еще раз.');
+            setError(err.message || t('auth.register.error'));
         } finally {
             setLoading(false);
         }
@@ -124,8 +126,8 @@ const Register = () => {
         <div className="min-h-screen flex items-center justify-center bg-base-100 p-4 text-primary">
             <div className="card bg-base-200 shadow-xl w-full max-w-md">
                 <div className="card-body">
-                    <h2 className="card-title text-3xl mb-2">Регистрация</h2>
-                    <p className="text-base-content/70 mb-6">Создайте новый аккаунт</p>
+                    <h2 className="card-title text-3xl mb-2">{t('auth.register.title')}</h2>
+                    <p className="text-primary/70 mb-6">{t('auth.register.subtitle')}</p>
 
                     {error && (
                         <div className="alert alert-error mb-4">
@@ -136,7 +138,7 @@ const Register = () => {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold">Логин</span>
+                                <span className="label-text font-semibold">{t('auth.register.login')}</span>
                             </label>
                             <input
                                 type="text"
@@ -170,7 +172,7 @@ const Register = () => {
 
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold">Email</span>
+                                <span className="label-text font-semibold">{t('auth.register.email')}</span>
                             </label>
                             <input
                                 type="text"
@@ -204,7 +206,7 @@ const Register = () => {
 
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold">Пароль</span>
+                                <span className="label-text font-semibold">{t('auth.register.password')}</span>
                             </label>
                             <input
                                 type="password"
@@ -251,7 +253,7 @@ const Register = () => {
 
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold">Подтвердите пароль</span>
+                                <span className="label-text font-semibold">{t('auth.register.confirmPassword')}</span>
                             </label>
                             <input
                                 type="password"
@@ -289,17 +291,17 @@ const Register = () => {
                                 className={`btn btn-primary w-full ${loading ? 'loading' : ''}`}
                                 disabled={loading}
                             >
-                                {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+                                {loading ? t('auth.register.submitting') : t('auth.register.submit')}
                             </button>
                         </div>
                     </form>
 
-                    <div className="divider">или</div>
+                    <div className="divider">{t('common.or')}</div>
 
-                    <p className="text-center text-sm text-base-content/70">
-                        Уже есть аккаунт?{' '}
+                    <p className="text-center text-sm text-primary/70">
+                        {t('auth.register.hasAccount')}{' '}
                         <Link to="/login" className="link link-primary font-semibold">
-                            Войти
+                            {t('auth.register.signIn')}
                         </Link>
                     </p>
                 </div>

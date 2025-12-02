@@ -1,7 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { BellIcon } from '../svg/icons';
 
 const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   // Пример уведомлений (можно заменить на реальные данные)
@@ -51,13 +53,13 @@ const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
         className="fixed inset-0 z-40"
         onClick={onClose}
       />
-      
+
       {/* Modal */}
-      <div className="fixed right-4 top-16 w-96 bg-base-200 rounded-lg shadow-xl z-50 border border-base-300">
+      <div className="fixed right-4 top-16 w-96 bg-base-200 rounded-lg shadow-xl z-50 border border-base-300 text-primary">
         <div className="p-4 border-b border-base-300 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BellIcon className="w-5 h-5" />
-            <h3 className="text-lg font-semibold">Notifications</h3>
+            <h3 className="text-lg font-semibold">{t('notificationsModal.title')}</h3>
             {displayNotifications.length > 0 && (
               <span className="badge badge-primary badge-sm">
                 {displayNotifications.length}
@@ -71,12 +73,12 @@ const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
             ✕
           </button>
         </div>
-        
+
         <div className="max-h-96 overflow-y-auto">
           {displayNotifications.length === 0 ? (
-            <div className="p-8 text-center text-base-content/60">
+            <div className="p-8 text-center text-primary/60">
               <BellIcon className="w-12 h-12 mx-auto mb-2 opacity-30" />
-              <p>No notifications</p>
+              <p>{t('notificationsModal.noNotifications')}</p>
             </div>
           ) : (
             <ul className="divide-y divide-base-300">
@@ -89,13 +91,13 @@ const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
                   <div className="flex items-start gap-3">
                     <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${getNotificationColor(notification.type)} bg-current`} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-base-content">
+                      <p className="text-sm font-semibold text-primary">
                         {notification.title}
                       </p>
-                      <p className="text-sm text-base-content/70 mt-1">
+                      <p className="text-sm text-primary/70 mt-1">
                         {notification.message}
                       </p>
-                      <p className="text-xs text-base-content/50 mt-1">
+                      <p className="text-xs text-primary/50 mt-1">
                         {notification.time}
                       </p>
                     </div>
@@ -105,14 +107,14 @@ const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
             </ul>
           )}
         </div>
-        
+
         {displayNotifications.length > 0 && (
           <div className="p-4 border-t border-base-300">
             <button
               onClick={onClose}
               className="btn btn-primary btn-sm w-full"
             >
-              Mark all as read
+              {t('notificationsModal.markAllRead')}
             </button>
           </div>
         )}

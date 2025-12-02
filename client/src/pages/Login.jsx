@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -27,10 +29,10 @@ const Login = () => {
     const validateEmailField = (value) => {
         const trimmed = value.trim();
         if (!trimmed) {
-            return 'Поле не должно быть пустым';
+            return t('auth.login.validation.emailEmpty');
         }
         if (!validateEmail(trimmed)) {
-            return 'Некорректный формат email';
+            return t('auth.login.validation.emailInvalid');
         }
         return null;
     };
@@ -38,7 +40,7 @@ const Login = () => {
     // Валидация пароля
     const validatePasswordField = (value) => {
         if (!value) {
-            return 'Поле не должно быть пустым';
+            return t('auth.login.validation.emailEmpty');
         }
         return null;
     };
@@ -67,7 +69,7 @@ const Login = () => {
             await signIn(email, password);
             navigate('/dashboard');
         } catch (err) {
-            setError(err.message || 'Ошибка авторизации. Проверьте email и пароль.');
+            setError(err.message || t('auth.login.error'));
         } finally {
             setLoading(false);
         }
@@ -89,8 +91,8 @@ const Login = () => {
         <div className="min-h-screen flex items-center justify-center bg-base-100 p-4 text-primary">
             <div className="card bg-base-200 shadow-xl w-full max-w-md">
                 <div className="card-body">
-                    <h2 className="card-title text-3xl mb-2">Вход</h2>
-                    <p className="text-base-content/70 mb-6">Войдите в свой аккаунт</p>
+                    <h2 className="card-title text-3xl mb-2">{t('auth.login.title')}</h2>
+                    <p className="text-primary/70 mb-6">{t('auth.login.subtitle')}</p>
 
                     {error && (
                         <div className="alert alert-error mb-4">
@@ -101,7 +103,7 @@ const Login = () => {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold">Email</span>
+                                <span className="label-text font-semibold">{t('auth.login.email')}</span>
                             </label>
                             <input
                                 type="text"
@@ -135,7 +137,7 @@ const Login = () => {
 
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold">Пароль</span>
+                                <span className="label-text font-semibold">{t('auth.login.password')}</span>
                             </label>
                             <input
                                 type="password"
@@ -173,17 +175,17 @@ const Login = () => {
                                 className={`btn btn-primary w-full ${loading ? 'loading' : ''}`}
                                 disabled={loading}
                             >
-                                {loading ? 'Вход...' : 'Войти'}
+                                {loading ? t('auth.login.submitting') : t('auth.login.submit')}
                             </button>
                         </div>
                     </form>
 
-                    <div className="divider">или</div>
+                    <div className="divider">{t('common.or')}</div>
 
-                    <p className="text-center text-sm text-base-content/70">
-                        Нет аккаунта?{' '}
+                    <p className="text-center text-sm text-primary/70">
+                        {t('auth.login.noAccount')}{' '}
                         <Link to="/register" className="link link-primary font-semibold">
-                            Зарегистрироваться
+                            {t('auth.login.register')}
                         </Link>
                     </p>
                 </div>

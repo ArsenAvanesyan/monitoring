@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUrl';
 
 const Profile = () => {
+  const { t } = useTranslation();
   const { user, updateProfile, updateAvatar, logout, refreshUserToken } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -52,7 +54,7 @@ const Profile = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setError('Пожалуйста, выберите изображение');
+      setError(t('profile.errors.selectImage'));
       return;
     }
 
@@ -61,10 +63,10 @@ const Profile = () => {
     setImageError(false); // Сбрасываем ошибку изображения
     try {
       await updateAvatar(file);
-      setSuccess('Фото успешно обновлено');
+      setSuccess(t('profile.errors.avatarSuccess'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message || 'Ошибка загрузки фото');
+      setError(err.message || t('profile.errors.avatarError'));
     } finally {
       setLoading(false);
       // Очищаем input
@@ -79,18 +81,18 @@ const Profile = () => {
     setError('');
     try {
       const response = await refreshUserToken();
-      setSuccess(response.message || 'Токен успешно обновлен');
+      setSuccess(response.message || t('profile.errors.tokenSuccess'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       // Обрабатываем разные типы ошибок
-      const errorMessage = err.response?.data?.message || err.message || 'Ошибка обновления токена';
+      const errorMessage = err.response?.data?.message || err.message || t('profile.errors.tokenError');
       setError(errorMessage);
 
       // Если ошибка 429 (слишком много запросов), показываем более понятное сообщение
       if (err.response?.status === 429) {
         setError(errorMessage);
       } else if (err.response?.status === 401) {
-        setError('Сессия истекла. Пожалуйста, войдите снова.');
+        setError(t('profile.errors.sessionExpired'));
       }
     } finally {
       setLoading(false);
@@ -105,17 +107,17 @@ const Profile = () => {
     // Валидация пароля
     if (formData.password) {
       if (!formData.oldPassword) {
-        setError('Для смены пароля необходимо указать старый пароль');
+        setError(t('profile.errors.oldPasswordRequired'));
         return;
       }
 
       if (formData.password !== formData.confirmPassword) {
-        setError('Пароли не совпадают');
+        setError(t('profile.errors.passwordsNotMatch'));
         return;
       }
 
       if (formData.password.length < 6) {
-        setError('Пароль должен быть не менее 6 символов');
+        setError(t('profile.errors.passwordMin'));
         return;
       }
     }
@@ -134,7 +136,7 @@ const Profile = () => {
       }
 
       await updateProfile(updateData);
-      setSuccess('Профиль успешно обновлен');
+      setSuccess(t('profile.success.profileUpdated'));
       setIsEditing(false);
       setFormData({
         login: user.login || '',
@@ -145,7 +147,7 @@ const Profile = () => {
       });
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.message || 'Ошибка обновления профиля');
+      setError(err.message || t('profile.errors.updateError'));
     } finally {
       setLoading(false);
     }
@@ -168,8 +170,8 @@ const Profile = () => {
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto text-primary">
-        <h1 className="text-3xl font-bold mb-2">Личный кабинет</h1>
-        <p className="text-base-content/70 mb-8">Управление настройками аккаунта</p>
+        <h1 className="text-3xl font-bold mb-2">{t('profile.title')}</h1>
+        <p className="text-primary/70 mb-8">{t('profile.subtitle')}</p>
 
         {error && (
           <div className="alert alert-error mb-4">
@@ -218,7 +220,7 @@ const Profile = () => {
               />
               <div>
                 <h2 className="text-2xl font-bold">{user.login}</h2>
-                <p className="text-base-content/70">{user.email}</p>
+                <p className="text-primary/70">{user.email}</p>
               </div>
             </div>
 
@@ -227,7 +229,7 @@ const Profile = () => {
             {/* Token Section */}
             <div className="mb-6">
               <label className="label">
-                <span className="label-text font-semibold">Токен</span>
+                <span className="label-text font-semibold">{t('profile.token')}</span>
               </label>
               <div className="flex items-center gap-3">
                 <input
@@ -242,12 +244,12 @@ const Profile = () => {
                   onClick={handleRefreshToken}
                   disabled={loading}
                 >
-                  Refresh Token
+                  {t('profile.refreshToken')}
                 </button>
               </div>
               <label className="label">
-                <span className="label-text-alt text-base-content/50">
-                  Токен можно обновить только раз в сутки
+                <span className="label-text-alt text-primary/50">
+                  {t('profile.tokenInfo')}
                 </span>
               </label>
             </div>
@@ -258,7 +260,7 @@ const Profile = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="label">
-                    <span className="label-text font-semibold">Логин</span>
+                    <span className="label-text font-semibold">{t('profile.login')}</span>
                   </label>
                   <input
                     type="text"
@@ -273,7 +275,7 @@ const Profile = () => {
 
                 <div>
                   <label className="label">
-                    <span className="label-text font-semibold">Email</span>
+                    <span className="label-text font-semibold">{t('profile.email')}</span>
                   </label>
                   <input
                     type="email"
@@ -290,14 +292,14 @@ const Profile = () => {
                   <>
                     <div>
                       <label className="label">
-                        <span className="label-text font-semibold">Старый пароль</span>
+                        <span className="label-text font-semibold">{t('profile.oldPassword')}</span>
                       </label>
                       <input
                         type="password"
                         name="oldPassword"
                         value={formData.oldPassword}
                         onChange={handleChange}
-                        placeholder="Введите старый пароль для смены"
+                        placeholder={t('profile.oldPasswordPlaceholder')}
                         className="input input-info input-bordered w-full bg-base-100"
                         disabled={!isEditing}
                       />
@@ -305,14 +307,14 @@ const Profile = () => {
 
                     <div>
                       <label className="label">
-                        <span className="label-text font-semibold">Новый пароль</span>
+                        <span className="label-text font-semibold">{t('profile.newPassword')}</span>
                       </label>
                       <input
                         type="password"
                         name="password"
                         value={formData.password}
                         onChange={handleChange}
-                        placeholder="Оставьте пустым, чтобы не менять"
+                        placeholder={t('profile.newPasswordPlaceholder')}
                         className="input input-info input-bordered w-full bg-base-100"
                         disabled={!isEditing}
                       />
@@ -321,7 +323,7 @@ const Profile = () => {
                     {formData.password && (
                       <div>
                         <label className="label">
-                          <span className="label-text font-semibold">Подтвердите новый пароль</span>
+                          <span className="label-text font-semibold">{t('profile.confirmPassword')}</span>
                         </label>
                         <input
                           type="password"
@@ -344,7 +346,7 @@ const Profile = () => {
                     className="btn btn-info"
                     onClick={() => setIsEditing(true)}
                   >
-                    Редактировать профиль
+                    {t('profile.editProfile')}
                   </button>
                 ) : (
                   <>
@@ -353,7 +355,7 @@ const Profile = () => {
                       className={`btn btn-info ${loading ? 'loading' : ''}`}
                       disabled={loading}
                     >
-                      {loading ? 'Сохранение...' : 'Сохранить'}
+                      {loading ? t('common.loading') : t('common.save')}
                     </button>
                     <button
                       type="button"
@@ -372,7 +374,7 @@ const Profile = () => {
                       }}
                       disabled={loading}
                     >
-                      Отмена
+                      {t('common.cancel')}
                     </button>
                   </>
                 )}
@@ -381,7 +383,7 @@ const Profile = () => {
                   className="btn btn-error ml-auto"
                   onClick={handleLogout}
                 >
-                  Выйти из аккаунта
+                  {t('profile.logout')}
                 </button>
               </div>
             </form>
