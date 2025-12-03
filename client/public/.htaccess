@@ -1,0 +1,16 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Не перенаправляем запросы к статическим файлам
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_URI} !\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)$ [NC]
+  
+  # Для всех остальных запросов возвращаем index.html (SPA routing)
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Проксирование /api настроено в nginx (location /api)
+# Этот файл нужен для SPA routing - при обновлении страницы Apache вернет index.html
+
