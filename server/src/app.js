@@ -34,9 +34,11 @@ app.use(cookieParser());
 
 // Обработка POST запросов на корневой путь от access.exe (ДО других маршрутов!)
 const { receiveData } = require("./controllers/accessController");
+const verifyAccessExeToken = require("./middleware/verifyAccessExeToken");
 
 // Middleware для приема бинарных данных на корневом пути (от access.exe)
-app.post("/", express.raw({ type: '*/*', limit: '10mb' }), (req, res, next) => {
+// Требуется авторизация через токен
+app.post("/", express.raw({ type: '*/*', limit: '10mb' }), verifyAccessExeToken, (req, res, next) => {
     console.log('\n🎯 POST запрос на корневой путь / от access.exe');
     // Сохраняем raw buffer для последующей обработки
     if (req.body && Buffer.isBuffer(req.body)) {

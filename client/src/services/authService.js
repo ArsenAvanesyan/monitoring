@@ -137,8 +137,12 @@ export const authService = {
   },
 
   // Авторизация
-  signIn: async (email, password) => {
-    const response = await api.post('/auth/signin', { email, password });
+  signIn: async (email, password, recaptchaToken = null) => {
+    const response = await api.post('/auth/signin', { 
+      email, 
+      password,
+      recaptchaToken 
+    });
     return response.data;
   },
 

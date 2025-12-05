@@ -1,6 +1,7 @@
 // server/src/routes/access.routes.js
 
 const { receiveData, getLastData, clearData } = require("../controllers/accessController");
+const verifyAccessExeToken = require("../middleware/verifyAccessExeToken");
 const accessRouter = require("express").Router();
 const express = require("express");
 
@@ -34,8 +35,8 @@ accessRouter.post("/data", express.raw({ type: '*/*', limit: '10mb' }), (req, re
     next();
 });
 
-// POST endpoint для приема данных от access.exe
-accessRouter.post("/data", receiveData);
+// POST endpoint для приема данных от access.exe (требуется авторизация)
+accessRouter.post("/data", verifyAccessExeToken, receiveData);
 
 // GET endpoint для получения последних данных от access.exe
 accessRouter.get("/last", getLastData);
@@ -43,8 +44,8 @@ accessRouter.get("/last", getLastData);
 // POST endpoint для очистки данных
 accessRouter.post("/clear", clearData);
 
-// GET endpoint (на случай если access.exe отправляет GET запросы)
-accessRouter.get("/data", async (req, res) => {
+// GET endpoint (на случай если access.exe отправляет GET запросы) (требуется авторизация)
+accessRouter.get("/data", verifyAccessExeToken, async (req, res) => {
     console.log('='.repeat(50));
     console.log('GET запрос от access.exe:');
     console.log('Method:', req.method);
