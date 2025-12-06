@@ -16,8 +16,8 @@ const Login = () => {
     const { signIn, isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
-    // Получаем CAPCHA_SITE_KEY из переменных окружения
-    const recaptchaSiteKey = import.meta.env.VITE_CAPCHA_SITE_KEY || '';
+    // Получаем SITE_KEY из переменных окружения
+    const recaptchaSiteKey = import.meta.env.VITE_SITE_KEY || '';
 
     useEffect(() => {
         if (!authLoading && isAuthenticated) {

@@ -14,9 +14,9 @@ async function verifyRecaptcha(token) {
         return false;
     }
 
-    const secretKey = process.env.CAPCHA_SECRET_KEY;
+    const secretKey = process.env.SECRET_KEY;
     if (!secretKey) {
-        console.warn('CAPCHA_SECRET_KEY не установлен в переменных окружения');
+        console.warn('SECRET_KEY не установлен в переменных окружения');
         return true; // Если ключ не установлен, пропускаем проверку
     }
 
@@ -119,7 +119,7 @@ exports.signIn = async (req, res) => {
         }
 
         // Проверка reCAPTCHA, если включена
-        if (process.env.CAPCHA_SECRET_KEY) {
+        if (process.env.SECRET_KEY) {
             if (!recaptchaToken) {
                 return res.status(400).json({ message: "Пожалуйста, подтвердите, что вы не робот" });
             }

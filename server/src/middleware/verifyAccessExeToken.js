@@ -12,31 +12,46 @@ async function verifyAccessExeToken(req, res, next) {
   try {
     let token = null;
 
+    // Логируем заголовки для отладки
+    console.log('🔍 Проверка токена access.exe:');
+    console.log('  Authorization header:', req.headers.authorization ? 'present' : 'missing');
+    console.log('  Query token:', req.query.token ? 'present' : 'missing');
+    console.log('  Body token:', (req.body && typeof req.body === 'object' && req.body.token) ? 'present' : 'missing');
+
     // Пытаемся получить токен из заголовка Authorization
     if (req.headers.authorization) {
       const authHeader = req.headers.authorization;
       // Проверяем формат "Bearer token" или просто "token"
       if (authHeader.startsWith('Bearer ')) {
         token = authHeader.split(" ")[1];
+        console.log('  ✅ Токен найден в Authorization header (Bearer format)');
       } else {
         token = authHeader;
+        console.log('  ✅ Токен найден в Authorization header (plain format)');
       }
     }
 
     // Если токена нет в заголовке, пытаемся получить из query параметров
     if (!token && req.query.token) {
       token = req.query.token;
+      console.log('  ✅ Токен найден в query параметрах');
     }
 
     // Если токена нет в query, пытаемся получить из тела запроса (если это JSON)
     if (!token && req.body && typeof req.body === 'object' && req.body.token) {
       token = req.body.token;
+      console.log('  ✅ Токен найден в теле запроса');
     }
 
     if (!token) {
       console.log('❌ Access.exe token not provided');
+      console.log('  Доступные способы передачи токена:');
+      console.log('    1. Заголовок: Authorization: Bearer YOUR_TOKEN');
+      console.log('    2. Заголовок: Authorization: YOUR_TOKEN');
+      console.log('    3. Query параметр: ?token=YOUR_TOKEN');
+      console.log('    4. В теле запроса (JSON): {"token": "YOUR_TOKEN", ...}');
       return res.status(401).json({ 
-        message: "Токен доступа не предоставлен. Необходима авторизация для получения данных от access.exe." 
+        message: "Токен доступа не предоставлен. Необходима авторизация для получения данных от access.exe. Получите токен в профиле пользователя и добавьте его в запрос." 
       });
     }
 

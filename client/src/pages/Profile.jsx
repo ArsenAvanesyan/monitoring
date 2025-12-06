@@ -229,15 +229,30 @@ const Profile = () => {
             {/* Token Section */}
             <div className="mb-6">
               <label className="label">
-                <span className="label-text font-semibold">{t('profile.token')}</span>
+                <span className="label-text font-semibold">Токен для access.exe</span>
               </label>
               <div className="flex items-center gap-3">
                 <input
                   type="text"
-                  value={user.token || ''}
+                  id="accessToken"
+                  value={user.token || 'Токен не сгенерирован'}
                   className="input input-bordered w-full bg-base-100 font-mono text-sm"
                   readOnly
                 />
+                {user.token && (
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    onClick={() => {
+                      navigator.clipboard.writeText(user.token);
+                      setSuccess('Токен скопирован в буфер обмена!');
+                      setTimeout(() => setSuccess(''), 3000);
+                    }}
+                    title="Копировать токен"
+                  >
+                    📋
+                  </button>
+                )}
                 <button
                   type="button"
                   className={`btn btn-info ${loading ? 'loading' : ''}`}
@@ -249,9 +264,14 @@ const Profile = () => {
               </div>
               <label className="label">
                 <span className="label-text-alt text-primary/50">
-                  {t('profile.tokenInfo')}
+                  Используйте этот токен в access.exe. Добавьте его в заголовок Authorization или в query параметр ?token=YOUR_TOKEN
                 </span>
               </label>
+              {!user.token && (
+                <div className="alert alert-warning mt-2">
+                  <span>⚠️ У вас нет токена. Нажмите "Обновить токен" для генерации.</span>
+                </div>
+              )}
             </div>
 
             <div className="divider"></div>
