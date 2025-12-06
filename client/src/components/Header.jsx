@@ -8,7 +8,12 @@ import { getImageUrl } from '../utils/imageUrl';
 import NotificationsModal from './NotificationsModal';
 
 const Header = () => {
-    const { user } = useAuth();
+    const { user, isAuthenticated } = useAuth();
+    
+    // Не показываем Header, если пользователь не авторизован
+    if (!isAuthenticated) {
+        return null;
+    }
     const { t, i18n } = useTranslation();
     const [searchQuery, setSearchQuery] = useState('');
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);

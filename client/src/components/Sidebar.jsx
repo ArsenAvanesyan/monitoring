@@ -1,11 +1,18 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
 import { DashboardIcon, DevicesIcon, PoolsIcon, WorkersIcon, SettingsIcon, AlertsIcon, MaintenanceIcon } from '../svg/icons';
 
 const Sidebar = () => {
   const location = useLocation();
   const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
+  
+  // Не показываем Sidebar, если пользователь не авторизован
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const menuItems = [
     {

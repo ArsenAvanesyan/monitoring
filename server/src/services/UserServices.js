@@ -86,6 +86,15 @@ class UserServices {
             throw new Error(error);
         }
     }
+
+    static async getUserByToken(token) {
+        try {
+            const user = await User.findOne({ where: { token } });
+            return user ? user.get() : null;
+        } catch (error) {
+            throw new Error(error);
+        }
+    }
 }
 
 module.exports = UserServices;

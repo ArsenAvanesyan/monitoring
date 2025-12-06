@@ -90,9 +90,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Авторизация
-  const signIn = async (email, password) => {
+  const signIn = async (email, password, recaptchaToken = null) => {
     try {
-      const response = await authService.signIn(email, password);
+      const response = await authService.signIn(email, password, recaptchaToken);
       setUser(response.user);
       setAccessToken(response.accessToken);
       localStorage.setItem('accessToken', response.accessToken);

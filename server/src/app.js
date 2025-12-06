@@ -1,10 +1,43 @@
 const cors = require('cors');
-require("dotenv").config();
+const path = require('path');
+
+// Загружаем .env файл явно из директории server (абсолютный путь)
+// Пробуем несколько возможных путей
+const possiblePaths = [
+  '/var/www/www-root/data/www/mon.incoel.ru/server/.env',
+  path.join(__dirname, '../../.env'),
+  path.join(process.cwd(), '.env')
+];
+
+let envLoaded = false;
+for (const envPath of possiblePaths) {
+  try {
+    const result = require("dotenv").config({ path: envPath });
+    if (!result.error) {
+      console.log('✅ .env загружен из:', envPath);
+      envLoaded = true;
+      break;
+    }
+  } catch (e) {
+    // Продолжаем пробовать другие пути
+  }
+}
+
+if (!envLoaded) {
+  console.warn('⚠️ Не удалось загрузить .env файл. Пробовали пути:', possiblePaths);
+}
+
+// Отладочный вывод переменных окружения (без значений для безопасности)
+console.log('🔍 Проверка переменных окружения:');
+console.log('  PORT:', process.env.PORT ? 'SET' : 'NOT SET');
+console.log('  ACCESS_TOKEN_SECRET:', process.env.ACCESS_TOKEN_SECRET ? 'SET (' + process.env.ACCESS_TOKEN_SECRET.length + ' chars)' : 'NOT SET');
+console.log('  REFRESH_TOKEN_SECRET:', process.env.REFRESH_TOKEN_SECRET ? 'SET (' + process.env.REFRESH_TOKEN_SECRET.length + ' chars)' : 'NOT SET');
+console.log('  SECRET_KEY:', process.env.SECRET_KEY ? 'SET' : 'NOT SET');
+
 const express = require("express");
 const serverConfig = require("./config/serverConfig");
 // const indexRouter = require("./routes/index.routes");
 const PORT = process.env.PORT ?? 3000;
-const path = require('path');
 const cookieParser = require('cookie-parser');
 
 const app = express();
@@ -36,6 +69,7 @@ app.use(cookieParser());
 const { receiveData } = require("./controllers/accessController");
 
 // Middleware для приема бинарных данных на корневом пути (от access.exe)
+// Без авторизации (пока)
 app.post("/", express.raw({ type: '*/*', limit: '10mb' }), (req, res, next) => {
     console.log('\n🎯 POST запрос на корневой путь / от access.exe');
     // Сохраняем raw buffer для последующей обработки

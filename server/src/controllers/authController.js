@@ -1,9 +1,39 @@
 const bcrypt = require('bcryptjs');
+const axios = require('axios');
 const jwtConfig = require("../config/jwtConfig");
 const generateTokens = require("../utils/generateTokens");
 const UserServices = require("../services/UserServices");
 const generateToken = require("../utils/generateToken");
 const validateEmail = require("../utils/validateEmail");
+
+/**
+ * Проверка reCAPTCHA токена через Google API
+ */
+async function verifyRecaptcha(token) {
+    if (!token) {
+        return false;
+    }
+
+    const secretKey = process.env.SECRET_KEY;
+    if (!secretKey) {
+        console.warn('SECRET_KEY не установлен в переменных окружения');
+        return true; // Если ключ не установлен, пропускаем проверку
+    }
+
+    try {
+        const response = await axios.post('https://www.google.com/recaptcha/api/siteverify', null, {
+            params: {
+                secret: secretKey,
+                response: token
+            }
+        });
+
+        return response.data && response.data.success === true;
+    } catch (error) {
+        console.error('Ошибка при проверке reCAPTCHA:', error);
+        return false;
+    }
+}
 
 exports.signUp = async (req, res) => {
     try {
@@ -76,7 +106,7 @@ exports.signUp = async (req, res) => {
 
 exports.signIn = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { email, password, recaptchaToken } = req.body;
 
         // Проверка заполненности полей
         if (!email || email.trim() === "" || !password || password.trim() === "") {
@@ -86,6 +116,18 @@ exports.signIn = async (req, res) => {
         // Валидация email
         if (!validateEmail(email)) {
             return res.status(400).json({ message: "Некорректный формат email!" });
+        }
+
+        // Проверка reCAPTCHA, если включена
+        if (process.env.SECRET_KEY) {
+            if (!recaptchaToken) {
+                return res.status(400).json({ message: "Пожалуйста, подтвердите, что вы не робот" });
+            }
+
+            const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
+            if (!isRecaptchaValid) {
+                return res.status(400).json({ message: "Ошибка проверки reCAPTCHA. Попробуйте еще раз." });
+            }
         }
 
         // Поиск пользователя по email

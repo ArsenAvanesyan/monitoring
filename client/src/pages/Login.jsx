@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 const Login = () => {
     const { t } = useTranslation();
@@ -10,8 +11,13 @@ const Login = () => {
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [recaptchaToken, setRecaptchaToken] = useState(null);
+    const recaptchaRef = useRef(null);
     const { signIn, isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
+
+    // Получаем SITE_KEY из переменных окружения
+    const recaptchaSiteKey = import.meta.env.VITE_SITE_KEY || '';
 
     useEffect(() => {
         if (!authLoading && isAuthenticated) {
@@ -45,6 +51,10 @@ const Login = () => {
         return null;
     };
 
+    const handleRecaptchaChange = (token) => {
+        setRecaptchaToken(token);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -57,6 +67,12 @@ const Login = () => {
         const passwordError = validatePasswordField(password);
         if (passwordError) errors.password = passwordError;
 
+        // Проверка reCAPTCHA, если включена
+        if (recaptchaSiteKey && !recaptchaToken) {
+            setError('Пожалуйста, подтвердите, что вы не робот');
+            return;
+        }
+
         if (Object.keys(errors).length > 0) {
             setFieldErrors(errors);
             return;
@@ -66,10 +82,20 @@ const Login = () => {
         setLoading(true);
 
         try {
-            await signIn(email, password);
+            await signIn(email, password, recaptchaToken);
+            // Сбрасываем reCAPTCHA после успешного входа
+            if (recaptchaRef.current) {
+                recaptchaRef.current.reset();
+            }
+            setRecaptchaToken(null);
             navigate('/dashboard');
         } catch (err) {
             setError(err.message || t('auth.login.error'));
+            // Сбрасываем reCAPTCHA при ошибке
+            if (recaptchaRef.current) {
+                recaptchaRef.current.reset();
+            }
+            setRecaptchaToken(null);
         } finally {
             setLoading(false);
         }
@@ -169,11 +195,23 @@ const Login = () => {
                             )}
                         </div>
 
+                        {recaptchaSiteKey && (
+                            <div className="form-control">
+                                <div className="flex justify-center">
+                                    <ReCAPTCHA
+                                        ref={recaptchaRef}
+                                        sitekey={recaptchaSiteKey}
+                                        onChange={handleRecaptchaChange}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
                         <div className="form-control mt-6">
                             <button
                                 type="submit"
                                 className={`btn btn-primary w-full ${loading ? 'loading' : ''}`}
-                                disabled={loading}
+                                disabled={loading || (recaptchaSiteKey && !recaptchaToken)}
                             >
                                 {loading ? t('auth.login.submitting') : t('auth.login.submit')}
                             </button>

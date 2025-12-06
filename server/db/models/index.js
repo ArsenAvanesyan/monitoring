@@ -6,7 +6,19 @@ const Sequelize = require('sequelize');
 const process = require('process');
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
-const config = require(__dirname + '/../config/config.json')[env];
+const configData = require(__dirname + '/../config/config.json');
+let config = configData[env];
+
+// Если конфигурация для текущего окружения не найдена, используем development
+if (!config) {
+  console.warn(`⚠️ Configuration for environment "${env}" not found, using "development"`);
+  config = configData['development'];
+}
+
+if (!config) {
+  throw new Error(`Configuration not found in config.json. Available environments: ${Object.keys(configData).join(', ')}`);
+}
+
 const db = {};
 
 let sequelize;

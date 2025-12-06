@@ -34,7 +34,7 @@ accessRouter.post("/data", express.raw({ type: '*/*', limit: '10mb' }), (req, re
     next();
 });
 
-// POST endpoint для приема данных от access.exe
+// POST endpoint для приема данных от access.exe (без авторизации, пока)
 accessRouter.post("/data", receiveData);
 
 // GET endpoint для получения последних данных от access.exe
@@ -43,7 +43,7 @@ accessRouter.get("/last", getLastData);
 // POST endpoint для очистки данных
 accessRouter.post("/clear", clearData);
 
-// GET endpoint (на случай если access.exe отправляет GET запросы)
+// GET endpoint (на случай если access.exe отправляет GET запросы) (без авторизации, пока)
 accessRouter.get("/data", async (req, res) => {
     console.log('='.repeat(50));
     console.log('GET запрос от access.exe:');

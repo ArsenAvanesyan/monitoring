@@ -4,7 +4,7 @@ import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
-// import Register from './pages/Register' // Регистрация отключена
+import Register from './pages/Register'
 import Profile from './pages/Profile'
 import Dashboard from './pages/Dashboard'
 import Devices from './pages/Devices'
@@ -31,14 +31,7 @@ const AppLayout = () => {
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/maintenance" element={<Maintenance />} />
               <Route path="/settings" element={<Settings />} />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </main>
@@ -55,11 +48,14 @@ function App() {
         <div className="App">
           <Routes>
             <Route path="/login" element={<Login />} />
-            {/* Регистрация отключена */}
-            {/* <Route path="/register" element={<Register />} /> */}
+            <Route path="/register" element={<Register />} />
             <Route
               path="/*"
-              element={<AppLayout />}
+              element={
+                <ProtectedRoute>
+                  <AppLayout />
+                </ProtectedRoute>
+              }
             />
           </Routes>
         </div>
