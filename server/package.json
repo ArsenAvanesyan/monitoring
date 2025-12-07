@@ -20,8 +20,8 @@
     "socket.io": "^4.8.1"
   },
   "scripts": {
-    "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
+    "start": "node scripts/wait-for-redis.js && node src/app.js",
+    "dev": "node scripts/wait-for-redis.js && nodemon src/app.js",
     "dbr": "npx sequelize db:migrate:undo:all && npx sequelize db:migrate && npx sequelize db:seed:all",
     "db:create": "node scripts/create-db.js",
     "db:test": "node -e \"require('./src/config/database').testConnection()\""
