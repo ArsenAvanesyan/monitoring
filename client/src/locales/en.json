@@ -63,7 +63,9 @@
     "workers": "Workers",
     "alerts": "Alerts",
     "maintenance": "Maintenance",
-    "settings": "Settings"
+    "settings": "Settings",
+    "collapse": "Collapse",
+    "expand": "Expand"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -104,6 +106,7 @@
     "onlineOnly": "Online Only",
     "degradedOnly": "Degraded Only",
     "offlineOnly": "Offline Only",
+    "onlyActiveMiners": "Only Success Miners",
     "rebootSelected": "Reboot Selected",
     "changePools": "Change Pools",
     "updateFirmware": "Update Firmware",
@@ -115,7 +118,14 @@
     "showing": "Showing",
     "of": "of",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "noData": "No Data",
+    "noDataDescription": "Data has not been received yet. Run access.exe to get data from miners.",
+    "itemsPerPage": "Items per page",
+    "show50": "50",
+    "show100": "100",
+    "show255": "255",
+    "showAll": "All"
   },
   "devices": {
     "title": "Devices",
@@ -224,4 +234,3 @@
     "markAllRead": "Mark all as read"
   }
 }
-

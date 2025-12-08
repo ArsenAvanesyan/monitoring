@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl } from '../utils/imageUrl';
 import NotificationsModal from './NotificationsModal';
 
-const Header = () => {
+const Header = ({ isSidebarCollapsed }) => {
     const { user, isAuthenticated } = useAuth();
     
     // Не показываем Header, если пользователь не авторизован
@@ -55,7 +55,12 @@ const Header = () => {
 
     return (
         <>
-            <header className="bg-base-300 border-b border-accent px-6 py-4">
+            <header 
+                className="fixed top-0 bg-base-300 border-b border-accent px-6 py-4 z-30 transition-all duration-300 right-0" 
+                style={{ 
+                    left: isSidebarCollapsed ? '80px' : '256px'
+                }}
+            >
                 <div className="flex items-center justify-between gap-4">
                     {/* Search Bar */}
                     <form onSubmit={handleSearch} className="flex-1 max-w-md">

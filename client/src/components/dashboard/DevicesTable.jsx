@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { convertMinersToDevices } from './utils/minerDataConverter';
+import { ChevronDownIcon, FilterIcon, ExportIcon, RefreshIcon, AddIcon, MenuDotsIcon } from '../../svg/icons';
 
 const DevicesTable = ({ minersData = [] }) => {
     const { t } = useTranslation();
@@ -8,6 +9,9 @@ const DevicesTable = ({ minersData = [] }) => {
     const [sortKey, setSortKey] = useState('name');
     const [sortDirection, setSortDirection] = useState('asc');
     const [filterStatus, setFilterStatus] = useState(null);
+    const [onlyActiveMiners, setOnlyActiveMiners] = useState(false);
+    const [itemsPerPage, setItemsPerPage] = useState(50);
+    const [currentPage, setCurrentPage] = useState(1);
 
     // Преобразуем данные от access.exe в формат для таблицы
     const devices = convertMinersToDevices(minersData);
@@ -45,11 +49,64 @@ const DevicesTable = ({ minersData = [] }) => {
     if (filterStatus) {
         filteredDevices = devices.filter(d => d.status === filterStatus);
     }
+    // Фильтр "Только активные майнеры" (online и degraded)
+    if (onlyActiveMiners) {
+        filteredDevices = filteredDevices.filter(d => d.status === 'online' || d.status === 'degraded');
+    }
+
+    // Функция для преобразования IP адреса в число для сортировки
+    const ipToNumber = (ip) => {
+        if (!ip || typeof ip !== 'string') return 0;
+        const parts = ip.split('.').map(part => parseInt(part, 10));
+        if (parts.length !== 4 || parts.some(isNaN)) return 0;
+        // Преобразуем IP в число: a.b.c.d = a*256^3 + b*256^2 + c*256 + d
+        return parts[0] * 256 * 256 * 256 + parts[1] * 256 * 256 + parts[2] * 256 + parts[3];
+    };
+
+    // Функция для получения значения для сортировки
+    const getSortValue = (device, key) => {
+        switch (key) {
+            case 'name':
+                return device.name || '';
+            case 'model':
+                return device.model || '';
+            case 'status':
+                return device.status || '';
+            case 'hashrate':
+                return device.hashrate || 0;
+            case 'temperature':
+                return device.temperature || 0;
+            case 'fanSpeed':
+                return device.fanSpeed || 0;
+            case 'pool':
+                return device.pool || '';
+            case 'worker':
+                return device.worker || '';
+            case 'ipAddress':
+                // Преобразуем IP адрес в число для правильной сортировки
+                return ipToNumber(device.ipAddress);
+            case 'uptime':
+                // Парсим uptime для сортировки (например, "4d 20h" -> дни*24 + часы)
+                if (typeof device.uptime === 'string') {
+                    const match = device.uptime.match(/(\d+)d\s*(\d+)h/);
+                    if (match) {
+                        return parseInt(match[1]) * 24 + parseInt(match[2]);
+                    }
+                    const hoursMatch = device.uptime.match(/(\d+)h/);
+                    if (hoursMatch) {
+                        return parseInt(hoursMatch[1]);
+                    }
+                }
+                return 0;
+            default:
+                return device[key] || '';
+        }
+    };
 
     const sortedDevices = [...filteredDevices].sort((a, b) => {
         if (!sortKey) return 0;
-        const aVal = a[sortKey];
-        const bVal = b[sortKey];
+        const aVal = getSortValue(a, sortKey);
+        const bVal = getSortValue(b, sortKey);
         if (typeof aVal === 'string' && typeof bVal === 'string') {
             return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
         }
@@ -58,6 +115,17 @@ const DevicesTable = ({ minersData = [] }) => {
         }
         return 0;
     });
+
+    // Пагинация
+    const totalPages = itemsPerPage === 'all' ? 1 : Math.ceil(sortedDevices.length / itemsPerPage);
+    const startIndex = itemsPerPage === 'all' ? 0 : (currentPage - 1) * itemsPerPage;
+    const endIndex = itemsPerPage === 'all' ? sortedDevices.length : startIndex + itemsPerPage;
+    const paginatedDevices = sortedDevices.slice(startIndex, endIndex);
+
+    // Сброс страницы при изменении фильтров или количества элементов
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filterStatus, itemsPerPage, onlyActiveMiners]);
 
     const getStatusBadge = (status) => {
         switch (status) {
@@ -92,23 +160,119 @@ const DevicesTable = ({ minersData = [] }) => {
                 <div className="flex flex-wrap items-center justify-between gap-4 border-b border-base-300 p-4">
                     <div className="flex items-center gap-2">
                         <h3 className="text-lg font-bold text-primary">{t('dashboard.devices')}</h3>
-                        <span className="badge badge-ghost">{filteredDevices.length} {t('dashboard.total')}</span>
+                        <div className="btn btn-sm btn-ghost">
+                            {filteredDevices.length} {t('dashboard.total')}
+                        </div>
+                        {/* Выбор количества элементов на странице */}
+                        <div className="dropdown dropdown-end">
+                            <div tabIndex={0} role="button" className="btn btn-sm btn-ghost">
+                                {itemsPerPage === 'all' ? t('dashboard.showAll') : itemsPerPage} {t('dashboard.itemsPerPage')}
+                                <ChevronDownIcon className="w-4 h-4 ml-1" />
+                            </div>
+                            <ul tabIndex={0} className="dropdown-content menu bg-base-200 rounded-box z-[1] w-40 p-2 shadow-lg border border-base-300">
+                                <li>
+                                    <button
+                                        onClick={(e) => {
+                                            setItemsPerPage(50);
+                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
+                                        }}
+                                    >
+                                        {t('dashboard.show50')}
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        onClick={(e) => {
+                                            setItemsPerPage(100);
+                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
+                                        }}
+                                    >
+                                        {t('dashboard.show100')}
+                                    </button>
+                                </li>
+                                {/* <li><button onClick={() => setItemsPerPage(255)}>{t('dashboard.show255')}</button></li> */}
+                                <li>
+                                    <button
+                                        onClick={(e) => {
+                                            setItemsPerPage('all');
+                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
+                                        }}
+                                    >
+                                        {t('dashboard.showAll')}
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                         {/* Filter Dropdown */}
                         <div className="dropdown dropdown-end">
                             <div tabIndex={0} role="button" className="btn btn-sm btn-ghost">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                                </svg>
+                                <FilterIcon className="w-4 h-4" />
                                 {t('dashboard.filter')}
-                                {filterStatus && <span className="badge badge-sm ml-1">1</span>}
+                                {(filterStatus || onlyActiveMiners) && <span className="badge badge-sm ml-1">{(filterStatus ? 1 : 0) + (onlyActiveMiners ? 1 : 0)}</span>}
                             </div>
                             <ul tabIndex={0} className="dropdown-content menu bg-base-200 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300">
-                                <li><button onClick={() => setFilterStatus(null)}>{t('dashboard.allDevices')}</button></li>
-                                <li><button onClick={() => setFilterStatus('online')}>{t('dashboard.onlineOnly')}</button></li>
-                                <li><button onClick={() => setFilterStatus('degraded')}>{t('dashboard.degradedOnly')}</button></li>
-                                <li><button onClick={() => setFilterStatus('offline')}>{t('dashboard.offlineOnly')}</button></li>
+                                <li>
+                                    <button
+                                        className={`w-full text-left`}
+                                        onClick={(e) => {
+                                            setOnlyActiveMiners(true);
+                                            setFilterStatus(null);
+                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
+                                        }}
+                                    >
+                                        {t('dashboard.onlyActiveMiners')}
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        className={`w-full text-left`}
+                                        onClick={(e) => {
+                                            setFilterStatus(null);
+                                            setOnlyActiveMiners(false);
+                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
+                                        }}
+                                    >
+                                        {t('dashboard.allDevices')}
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        className={`w-full text-left`}
+                                        onClick={(e) => {
+                                            setFilterStatus('online');
+                                            setOnlyActiveMiners(false);
+                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
+                                        }}
+                                    >
+                                        {t('dashboard.onlineOnly')}
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        className={`w-full text-left`}
+                                        onClick={(e) => {
+                                            setFilterStatus('degraded');
+                                            setOnlyActiveMiners(false);
+                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
+                                        }}
+                                    >
+                                        {t('dashboard.degradedOnly')}
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        className={`w-full text-left`}
+                                        onClick={(e) => {
+                                            setFilterStatus('offline');
+                                            setOnlyActiveMiners(false);
+                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
+                                        }}
+                                    >
+                                        {t('dashboard.offlineOnly')}
+                                    </button>
+                                </li>
                             </ul>
                         </div>
 
@@ -129,21 +293,15 @@ const DevicesTable = ({ minersData = [] }) => {
                         )}
 
                         <button className="btn btn-sm btn-ghost">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
+                            <ExportIcon className="w-4 h-4" />
                             {t('dashboard.export')}
                         </button>
                         <button className="btn btn-sm btn-ghost">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
+                            <RefreshIcon className="w-4 h-4" />
                             {t('dashboard.refresh')}
                         </button>
                         <button className="btn btn-sm btn-primary">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
+                            <AddIcon className="w-4 h-4" />
                             {t('dashboard.addDevice')}
                         </button>
                     </div>
@@ -186,16 +344,41 @@ const DevicesTable = ({ minersData = [] }) => {
                                         {sortKey === 'temperature' && (sortDirection === 'asc' ? '↑' : '↓')}
                                     </div>
                                 </th>
-                                <th className="text-primary">{t('dashboard.fanSpeed')}</th>
-                                <th className="text-primary">{t('dashboard.pool')}</th>
-                                <th className="text-primary">{t('dashboard.worker')}</th>
-                                <th className="text-primary">{t('dashboard.ipAddress')}</th>
-                                <th className="text-primary">{t('dashboard.uptime')}</th>
+                                <th className="cursor-pointer text-primary" onClick={() => handleSort('fanSpeed')}>
+                                    <div className="flex items-center gap-2">
+                                        {t('dashboard.fanSpeed')}
+                                        {sortKey === 'fanSpeed' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
+                                <th className="cursor-pointer text-primary" onClick={() => handleSort('pool')}>
+                                    <div className="flex items-center gap-2">
+                                        {t('dashboard.pool')}
+                                        {sortKey === 'pool' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
+                                <th className="cursor-pointer text-primary" onClick={() => handleSort('worker')}>
+                                    <div className="flex items-center gap-2">
+                                        {t('dashboard.worker')}
+                                        {sortKey === 'worker' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
+                                <th className="cursor-pointer text-primary" onClick={() => handleSort('ipAddress')}>
+                                    <div className="flex items-center gap-2">
+                                        {t('dashboard.ipAddress')}
+                                        {sortKey === 'ipAddress' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
+                                <th className="cursor-pointer text-primary" onClick={() => handleSort('uptime')}>
+                                    <div className="flex items-center gap-2">
+                                        {t('dashboard.uptime')}
+                                        {sortKey === 'uptime' && (sortDirection === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody>
-                            {sortedDevices.map((device) => (
+                            {paginatedDevices.map((device) => (
                                 <tr
                                     key={device.id}
                                     className={`hover ${device.status === 'offline' ? 'opacity-60' : ''}`}
@@ -242,9 +425,7 @@ const DevicesTable = ({ minersData = [] }) => {
                                     <td onClick={(e) => e.stopPropagation()}>
                                         <div className="dropdown dropdown-end">
                                             <div tabIndex={0} role="button" className="btn btn-ghost btn-xs btn-circle">
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                                </svg>
+                                                <MenuDotsIcon className="w-4 h-4" />
                                             </div>
                                             <ul tabIndex={0} className="dropdown-content menu bg-base-200 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300">
                                                 <li><button>{t('dashboard.viewDetails')}</button></li>
@@ -264,16 +445,62 @@ const DevicesTable = ({ minersData = [] }) => {
                 </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between border-t border-base-300 p-4">
-                    <p className="text-sm text-primary">
-                        {t('dashboard.showing')} {sortedDevices.length} {t('dashboard.of')} {devices.length} {t('dashboard.devices').toLowerCase()}
-                    </p>
-                    <div className="join">
-                        <button className="btn btn-sm join-item" disabled>«</button>
-                        <button className="btn btn-sm join-item btn-active">1</button>
-                        <button className="btn btn-sm join-item" disabled>»</button>
+                {itemsPerPage !== 'all' && totalPages > 1 && (
+                    <div className="flex items-center justify-between border-t border-base-300 p-4">
+                        <p className="text-sm text-primary">
+                            {t('dashboard.showing')} {startIndex + 1}-{Math.min(endIndex, sortedDevices.length)} {t('dashboard.of')} {sortedDevices.length} {t('dashboard.devices').toLowerCase()}
+                        </p>
+                        <div className="join">
+                            <button
+                                className="btn btn-sm join-item"
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            >
+                                «
+                            </button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                .filter(page => {
+                                    // Показываем первую, последнюю, текущую и соседние страницы
+                                    return page === 1 ||
+                                        page === totalPages ||
+                                        (page >= currentPage - 1 && page <= currentPage + 1);
+                                })
+                                .map((page, index, array) => {
+                                    // Добавляем многоточие если есть пропуски
+                                    const showEllipsis = index > 0 && page - array[index - 1] > 1;
+                                    return (
+                                        <React.Fragment key={page}>
+                                            {showEllipsis && (
+                                                <button className="btn btn-sm join-item" disabled>
+                                                    ...
+                                                </button>
+                                            )}
+                                            <button
+                                                className={`btn btn-sm join-item ${currentPage === page ? 'btn-active' : ''}`}
+                                                onClick={() => setCurrentPage(page)}
+                                            >
+                                                {page}
+                                            </button>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            <button
+                                className="btn btn-sm join-item"
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            >
+                                »
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
+                {itemsPerPage === 'all' && (
+                    <div className="flex items-center justify-between border-t border-base-300 p-4">
+                        <p className="text-sm text-primary">
+                            {t('dashboard.showing')} {sortedDevices.length} {t('dashboard.of')} {sortedDevices.length} {t('dashboard.devices').toLowerCase()}
+                        </p>
+                    </div>
+                )}
             </div>
         </div>
     );

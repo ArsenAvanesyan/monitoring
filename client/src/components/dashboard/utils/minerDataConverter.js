@@ -166,12 +166,12 @@ const getDeviceIp = (device) => {
 const removeDuplicateDevices = (devices) => {
     const deviceMap = new Map();
     const duplicatesRemoved = [];
-    
+
     // Проходим по устройствам в обратном порядке, чтобы оставить последнее вхождение
     for (let i = devices.length - 1; i >= 0; i--) {
         const device = devices[i];
         const deviceIp = getDeviceIp(device);
-        
+
         if (deviceIp) {
             if (!deviceMap.has(deviceIp)) {
                 deviceMap.set(deviceIp, device);
@@ -183,11 +183,11 @@ const removeDuplicateDevices = (devices) => {
             deviceMap.set(`no-ip-${i}`, device);
         }
     }
-    
+
     if (duplicatesRemoved.length > 0) {
         console.log(`🧹 Удалено ${duplicatesRemoved.length} дубликатов устройств по IP на клиенте:`, duplicatesRemoved);
     }
-    
+
     // Возвращаем массив уникальных устройств
     return Array.from(deviceMap.values());
 };
@@ -203,10 +203,10 @@ export const convertMinersToDevices = (minersArray) => {
 
     // Фильтруем только майнеры с IP
     const minersWithIp = minersArray.filter(miner => getDeviceIp(miner));
-    
+
     // Удаляем дубликаты по IP
     const uniqueMiners = removeDuplicateDevices(minersWithIp);
-    
+
     // Преобразуем в устройства
     return uniqueMiners.map((miner, index) => convertMinerToDevice(miner, index));
 };
