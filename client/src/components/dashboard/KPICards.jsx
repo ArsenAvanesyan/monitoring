@@ -1,11 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-const KPICards = ({ kpiData, devices = [] }) => {
+const KPICards = ({ devices = [] }) => {
     const { t } = useTranslation();
 
-    // Вычисляем KPI на основе реальных данных устройств, если они есть
-    const calculatedKPI = devices.length > 0 ? {
+    // Вычисляем KPI на основе реальных данных устройств
+    const kpiDataToUse = devices.length > 0 ? {
         totalHashrate: devices.reduce((sum, d) => sum + (d.hashrate || 0), 0) / 1000, // TH/s -> PH/s
         totalHashrateUnit: 'PH/s',
         devicesOnline: devices.filter(d => d.status === 'online').length,
@@ -20,9 +20,16 @@ const KPICards = ({ kpiData, devices = [] }) => {
             ? Math.round((devices.filter(d => d.status === 'online').length / devices.length) * 100 * 100) / 100
             : 0,
         activePools: new Set(devices.map(d => d.pool).filter(p => p && p !== 'N/A')).size
-    } : null;
-
-    const kpiDataToUse = calculatedKPI || kpiData;
+    } : {
+        totalHashrate: 0,
+        totalHashrateUnit: 'PH/s',
+        devicesOnline: 0,
+        devicesTotal: 0,
+        avgTemperature: 0,
+        avgFanSpeed: 0,
+        uptime: 0,
+        activePools: 0
+    };
 
     const kpiCards = [
         {

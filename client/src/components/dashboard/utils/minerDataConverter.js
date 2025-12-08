@@ -145,15 +145,69 @@ export const convertMinerToDevice = (miner, index) => {
 };
 
 /**
+ * Нормализует IP адрес (приводит к строке и убирает пробелы)
+ */
+const normalizeIp = (ip) => {
+    if (!ip) return null;
+    const ipStr = String(ip).trim();
+    return ipStr || null;
+};
+
+/**
+ * Получает IP из устройства (проверяет разные поля)
+ */
+const getDeviceIp = (device) => {
+    return normalizeIp(device.ip) || normalizeIp(device.ipAddress) || normalizeIp(device.IP) || null;
+};
+
+/**
+ * Удаляет дубликаты устройств по IP, оставляя последнее вхождение
+ */
+const removeDuplicateDevices = (devices) => {
+    const deviceMap = new Map();
+    const duplicatesRemoved = [];
+
+    // Проходим по устройствам в обратном порядке, чтобы оставить последнее вхождение
+    for (let i = devices.length - 1; i >= 0; i--) {
+        const device = devices[i];
+        const deviceIp = getDeviceIp(device);
+
+        if (deviceIp) {
+            if (!deviceMap.has(deviceIp)) {
+                deviceMap.set(deviceIp, device);
+            } else {
+                duplicatesRemoved.push(deviceIp);
+            }
+        } else {
+            // Устройства без IP оставляем (но они не должны дублироваться)
+            deviceMap.set(`no-ip-${i}`, device);
+        }
+    }
+
+    if (duplicatesRemoved.length > 0) {
+        console.log(`🧹 Удалено ${duplicatesRemoved.length} дубликатов устройств по IP на клиенте:`, duplicatesRemoved);
+    }
+
+    // Возвращаем массив уникальных устройств
+    return Array.from(deviceMap.values());
+};
+
+/**
  * Преобразует массив данных от access.exe в массив устройств
+ * Автоматически удаляет дубликаты по IP
  */
 export const convertMinersToDevices = (minersArray) => {
     if (!Array.isArray(minersArray) || minersArray.length === 0) {
         return [];
     }
 
-    return minersArray
-        .filter(miner => miner.ip) // Фильтруем только майнеры с IP
-        .map((miner, index) => convertMinerToDevice(miner, index));
+    // Фильтруем только майнеры с IP
+    const minersWithIp = minersArray.filter(miner => getDeviceIp(miner));
+
+    // Удаляем дубликаты по IP
+    const uniqueMiners = removeDuplicateDevices(minersWithIp);
+
+    // Преобразуем в устройства
+    return uniqueMiners.map((miner, index) => convertMinerToDevice(miner, index));
 };
 

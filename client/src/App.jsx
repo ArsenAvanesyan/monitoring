@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { AuthProvider } from './context/AuthContext'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
@@ -16,12 +17,36 @@ import Settings from './pages/Settings'
 import './App.css'
 
 const AppLayout = () => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    // Загружаем состояние из localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      return saved === 'true';
+    }
+    return false;
+  });
+
+  // Сохраняем состояние в localStorage при изменении
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', isSidebarCollapsed.toString());
+  }, [isSidebarCollapsed]);
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   return (
     <>
-      <Header />
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
+      <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
+      <Header isSidebarCollapsed={isSidebarCollapsed} />
+      <div
+        className="flex min-h-screen transition-all duration-300"
+        style={{
+          marginLeft: isSidebarCollapsed ? '80px' : '256px',
+          marginTop: '73px' // Высота Header
+        }}
+      >
+        <div className="flex-1 flex flex-col w-full">
           <main className="flex-1 bg-base-100 overflow-auto text-primary">
             <Routes>
               <Route path="/dashboard" element={<Dashboard />} />

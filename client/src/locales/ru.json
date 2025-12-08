@@ -63,7 +63,9 @@
     "workers": "Воркеры",
     "alerts": "Оповещения",
     "maintenance": "Обслуживание",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "collapse": "Свернуть",
+    "expand": "Развернуть"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -104,6 +106,7 @@
     "onlineOnly": "Только онлайн",
     "degradedOnly": "Только деградированные",
     "offlineOnly": "Только офлайн",
+    "onlyActiveMiners": "Только активные майнеры",
     "rebootSelected": "Перезагрузить выбранные",
     "changePools": "Изменить пулы",
     "updateFirmware": "Обновить прошивку",
@@ -115,7 +118,14 @@
     "showing": "Показано",
     "of": "из",
     "previous": "Предыдущая",
-    "next": "Следующая"
+    "next": "Следующая",
+    "noData": "Нет данных",
+    "noDataDescription": "Данные еще не получены. Запустите access.exe для получения данных от майнеров.",
+    "itemsPerPage": "Элементов на странице",
+    "show50": "50",
+    "show100": "100",
+    "show255": "255",
+    "showAll": "Все"
   },
   "devices": {
     "title": "Устройства",

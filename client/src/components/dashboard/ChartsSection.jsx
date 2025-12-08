@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { RefreshIcon, CalendarIcon } from '../../svg/icons';
 
 const ChartsSection = ({ timeRange, onTimeRangeChange }) => {
     const { t } = useTranslation();
@@ -30,9 +31,7 @@ const ChartsSection = ({ timeRange, onTimeRangeChange }) => {
                                 </button>
                             </div>
                             <button className="btn btn-ghost btn-sm btn-circle">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
+                                <RefreshIcon className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
@@ -54,9 +53,7 @@ const ChartsSection = ({ timeRange, onTimeRangeChange }) => {
                             <p className="text-sm text-primary">{t('dashboard.deviceTemperatureRanges')}</p>
                         </div>
                         <button className="btn btn-ghost btn-sm btn-circle">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
+                            <CalendarIcon className="w-4 h-4" />
                         </button>
                     </div>
                     <div className="h-64 flex items-center justify-center text-primary">

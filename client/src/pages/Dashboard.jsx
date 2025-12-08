@@ -11,20 +11,11 @@ const Dashboard = () => {
   const [timeRange, setTimeRange] = useState('24h');
   const [accessDataArray, setAccessDataArray] = useState([]);
 
-  // Mock data для KPI (используется если нет реальных данных)
-  const kpiData = {
-    totalHashrate: 2.45,
-    totalHashrateUnit: 'PH/s',
-    devicesOnline: 118,
-    devicesTotal: 130,
-    avgTemperature: 72,
-    avgFanSpeed: 6850,
-    uptime: 99.97,
-    activePools: 2,
-  };
-
   // Преобразуем данные от access.exe в формат устройств
   const devices = convertMinersToDevices(accessDataArray);
+
+  // Проверяем наличие данных
+  const hasData = devices.length > 0;
 
   // Загрузка данных от access.exe
   const fetchAccessData = async () => {
@@ -100,13 +91,24 @@ const Dashboard = () => {
         <p className='text-primary mb-8'>{t('dashboard.subtitle')}</p>
 
         {/* KPI Cards */}
-        <KPICards kpiData={kpiData} devices={devices} />
-
-        {/* Charts Section */}
-        <ChartsSection timeRange={timeRange} onTimeRangeChange={setTimeRange} />
-
-        {/* Devices Table - использует данные от access.exe */}
-        <DevicesTable minersData={accessDataArray} />
+        {hasData ? (
+          <>
+            <KPICards devices={devices} />
+            {/* Charts Section */}
+            <ChartsSection timeRange={timeRange} onTimeRangeChange={setTimeRange} />
+            {/* Devices Table - использует данные от access.exe */}
+            <DevicesTable minersData={accessDataArray} />
+          </>
+        ) : (
+          <div className="card bg-base-200 shadow-xl border border-secondary">
+            <div className="card-body">
+              <div className="text-center text-primary py-8">
+                <p className="text-lg mb-2">{t('dashboard.noData')}</p>
+                <p className="text-sm text-primary/70">{t('dashboard.noDataDescription')}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
