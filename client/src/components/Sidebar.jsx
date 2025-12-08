@@ -8,7 +8,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
   const location = useLocation();
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
-  
+
   // Не показываем Sidebar, если пользователь не авторизован
   if (!isAuthenticated) {
     return null;
