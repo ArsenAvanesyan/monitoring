@@ -1,6 +1,6 @@
 // server/src/routes/access.routes.js
 
-const { receiveData, getLastData, clearData } = require("../controllers/accessController");
+const { receiveData, getLastData, clearData, removeDuplicates } = require("../controllers/accessController");
 const accessRouter = require("express").Router();
 const express = require("express");
 
@@ -42,6 +42,9 @@ accessRouter.get("/last", getLastData);
 
 // POST endpoint для очистки данных
 accessRouter.post("/clear", clearData);
+
+// POST endpoint для удаления дубликатов устройств по IP
+accessRouter.post("/remove-duplicates", removeDuplicates);
 
 // GET endpoint (на случай если access.exe отправляет GET запросы) (без авторизации, пока)
 accessRouter.get("/data", async (req, res) => {

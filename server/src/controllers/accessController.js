@@ -4,6 +4,53 @@ const bufferToHex = require('../utils/bufferToHex');
 const formatHex = require('../utils/formatHex');
 const parseNDJSON = require('../utils/parseNDJSON');
 
+//? Функция для нормализации IP адреса (приводит к строке и убирает пробелы)
+const normalizeIp = (ip) => {
+  if (!ip) return null;
+  // Преобразуем в строку и убираем пробелы
+  const ipStr = String(ip).trim();
+  return ipStr || null;
+};
+
+//? Функция для получения IP из устройства (проверяет разные поля)
+const getDeviceIp = (device) => {
+  return normalizeIp(device.ip) || normalizeIp(device.ipAddress) || normalizeIp(device.IP) || null;
+};
+
+//? Функция для удаления дубликатов устройств по IP
+const removeDuplicateDevices = (devices) => {
+  const deviceMap = new Map();
+  const duplicatesRemoved = [];
+
+  // Проходим по устройствам в обратном порядке, чтобы оставить последнее вхождение
+  for (let i = devices.length - 1; i >= 0; i--) {
+    const device = devices[i];
+    const deviceIp = getDeviceIp(device);
+
+    if (deviceIp) {
+      if (!deviceMap.has(deviceIp)) {
+        deviceMap.set(deviceIp, device);
+      } else {
+        duplicatesRemoved.push(deviceIp);
+      }
+    } else {
+      // Устройства без IP оставляем (но они не должны дублироваться)
+      deviceMap.set(`no-ip-${i}`, device);
+    }
+  }
+
+  if (duplicatesRemoved.length > 0) {
+    const uniqueDuplicates = [...new Set(duplicatesRemoved)];
+    console.log(`🧹 Удалено ${duplicatesRemoved.length} дубликатов устройств по IP (${uniqueDuplicates.length} уникальных IP):`, uniqueDuplicates);
+  }
+
+  const result = Array.from(deviceMap.values());
+  console.log(`📊 Результат удаления дубликатов: было ${devices.length}, стало ${result.length}`);
+
+  // Возвращаем массив уникальных устройств
+  return result;
+};
+
 exports.receiveData = async (req, res) => {
   try {
     //? Получаем счетчик из Redis
@@ -151,17 +198,77 @@ exports.receiveData = async (req, res) => {
     }
     console.log('='.repeat(50));
 
-    //? Если это данные от access.exe, очищаем старые тестовые данные из Redis
+    //? Если это данные от access.exe, обновляем устройства по IP вместо дублирования
     if (isFromAccessExe) {
       console.log(
-        '🎯 Получены данные от access.exe - очищаем старые тестовые данные'
+        '🎯 Получены данные от access.exe - обновляем устройства по IP'
       );
       try {
+        // Получаем существующие данные из Redis
         const existingData = await RedisService.getList(REDIS_KEYS.DATA_ARRAY);
-        const filteredData = existingData.filter((d) => d.test !== true);
-        // Очищаем список и добавляем только реальные данные
+
+        // Разделяем на тестовые и реальные данные
+        const testData = existingData.filter((d) => d.test === true);
+        const realData = existingData.filter((d) => d.test !== true);
+
+        // Создаем Map для быстрого поиска устройств по IP
+        const deviceMap = new Map();
+
+        // Сначала удаляем дубликаты из существующих данных
+        const uniqueRealData = removeDuplicateDevices(realData);
+        console.log(`📋 Было устройств: ${realData.length}, стало уникальных: ${uniqueRealData.length}`);
+
+        // Добавляем существующие реальные устройства в Map (ключ - IP)
+        for (const device of uniqueRealData) {
+          const deviceIp = getDeviceIp(device);
+          if (deviceIp) {
+            deviceMap.set(deviceIp, device);
+          }
+        }
+
+        // Обновляем или добавляем новые устройства
+        let updatedCount = 0;
+        let addedCount = 0;
+
+        for (const newDevice of parsedData) {
+          const deviceIp = getDeviceIp(newDevice);
+          if (deviceIp) {
+            if (deviceMap.has(deviceIp)) {
+              // Обновляем существующее устройство
+              deviceMap.set(deviceIp, newDevice);
+              updatedCount++;
+              console.log(`  ✅ Обновлено устройство с IP: ${deviceIp}`);
+            } else {
+              // Добавляем новое устройство
+              deviceMap.set(deviceIp, newDevice);
+              addedCount++;
+              console.log(`  ➕ Добавлено новое устройство с IP: ${deviceIp}`);
+            }
+          } else {
+            console.log(`  ⚠️ Пропущено устройство без IP:`, newDevice);
+          }
+        }
+
+        console.log(`📊 Статистика обновления: обновлено ${updatedCount}, добавлено ${addedCount}`);
+
+        // Преобразуем Map обратно в массив и еще раз проверяем на дубликаты
+        const updatedRealData = removeDuplicateDevices(Array.from(deviceMap.values()));
+        console.log(`📊 Финальное количество уникальных устройств: ${updatedRealData.length}`);
+
+        // Очищаем список и добавляем обновленные данные
         await RedisService.clearList(REDIS_KEYS.DATA_ARRAY);
-        for (const item of filteredData) {
+
+        // Сначала добавляем реальные данные
+        for (const item of updatedRealData) {
+          await RedisService.pushToList(
+            REDIS_KEYS.DATA_ARRAY,
+            item,
+            MAX_HISTORY_SIZE
+          );
+        }
+
+        // Затем добавляем тестовые данные (если они есть)
+        for (const item of testData) {
           await RedisService.pushToList(
             REDIS_KEYS.DATA_ARRAY,
             item,
@@ -169,7 +276,9 @@ exports.receiveData = async (req, res) => {
           );
         }
       } catch (error) {
-        console.error('Ошибка при очистке тестовых данных из Redis:', error);
+        console.error('Ошибка при обновлении устройств по IP:', error);
+        // В случае ошибки продолжаем со старой логикой
+        console.log('⚠️ Используем старую логику добавления данных');
       }
     }
 
@@ -178,13 +287,16 @@ exports.receiveData = async (req, res) => {
     const lastData = parsedData.length === 1 ? parsedData[0] : parsedData;
     await RedisService.set(REDIS_KEYS.LAST_DATA, lastData);
 
-    //? Добавляем все объекты в список Redis (для истории)
-    for (const item of parsedData) {
-      await RedisService.pushToList(
-        REDIS_KEYS.DATA_ARRAY,
-        item,
-        MAX_HISTORY_SIZE
-      );
+    //? Добавляем все объекты в список Redis (для истории) только если это НЕ данные от access.exe
+    //? (для access.exe мы уже обработали выше)
+    if (!isFromAccessExe) {
+      for (const item of parsedData) {
+        await RedisService.pushToList(
+          REDIS_KEYS.DATA_ARRAY,
+          item,
+          MAX_HISTORY_SIZE
+        );
+      }
     }
 
     //? Сохраняем hex данные и временную метку
@@ -212,10 +324,10 @@ exports.receiveData = async (req, res) => {
       message: 'Данные успешно получены',
       received: true,
       count: parsedData.length,
-      data: lastAccessData,
+      data: lastData,
       allData: parsedData,
       hexData: hexData ? formatHex(hexData) : null,
-      timestamp: lastAccessTimestamp,
+      timestamp: timestamp,
     });
   } catch (error) {
     console.error('Ошибка при получении данных от access.exe:', error);
@@ -255,6 +367,73 @@ exports.clearData = async (req, res) => {
   }
 };
 
+//? Очистка дубликатов устройств по IP
+exports.removeDuplicates = async (req, res) => {
+  try {
+    console.log('🧹 Очистка дубликатов устройств по IP из Redis');
+
+    // Получаем все данные из Redis
+    const existingData = await RedisService.getList(REDIS_KEYS.DATA_ARRAY);
+    console.log(`📋 Всего устройств до очистки: ${existingData.length}`);
+
+    // Разделяем на тестовые и реальные данные
+    const testData = existingData.filter((d) => d.test === true);
+    const realData = existingData.filter((d) => d.test !== true);
+
+    // Удаляем дубликаты из реальных данных
+    const uniqueRealData = removeDuplicateDevices(realData);
+    console.log(`📊 Уникальных устройств после очистки: ${uniqueRealData.length}`);
+    console.log(`🗑️ Удалено дубликатов: ${realData.length - uniqueRealData.length}`);
+
+    // Очищаем список и добавляем уникальные данные
+    await RedisService.clearList(REDIS_KEYS.DATA_ARRAY);
+
+    // Сначала добавляем реальные данные
+    for (const item of uniqueRealData) {
+      await RedisService.pushToList(
+        REDIS_KEYS.DATA_ARRAY,
+        item,
+        MAX_HISTORY_SIZE
+      );
+    }
+
+    // Затем добавляем тестовые данные (если они есть)
+    for (const item of testData) {
+      await RedisService.pushToList(
+        REDIS_KEYS.DATA_ARRAY,
+        item,
+        MAX_HISTORY_SIZE
+      );
+    }
+
+    // Обновляем LAST_DATA, если это массив устройств
+    const lastData = await RedisService.get(REDIS_KEYS.LAST_DATA);
+    if (Array.isArray(lastData)) {
+      const uniqueLastData = removeDuplicateDevices(lastData);
+      await RedisService.set(
+        REDIS_KEYS.LAST_DATA,
+        uniqueLastData.length === 1 ? uniqueLastData[0] : uniqueLastData
+      );
+    }
+
+    console.log('✅ Дубликаты успешно удалены из Redis');
+
+    res.status(200).json({
+      message: 'Дубликаты успешно удалены',
+      removed: realData.length - uniqueRealData.length,
+      before: existingData.length,
+      after: uniqueRealData.length + testData.length,
+      duplicatesRemoved: true,
+    });
+  } catch (error) {
+    console.error('Ошибка при удалении дубликатов:', error);
+    res.status(500).json({
+      error: 'Ошибка удаления дубликатов',
+      message: error.message,
+    });
+  }
+};
+
 //? Получение последних данных от access.exe
 exports.getLastData = async (req, res) => {
   try {
@@ -281,7 +460,11 @@ exports.getLastData = async (req, res) => {
     console.log('Всего объектов в истории:', lastAccessDataArray.length);
 
     //? Фильтруем тестовые данные из ответа, если есть реальные данные
-    const realDataArray = lastAccessDataArray.filter((d) => d.test !== true);
+    let realDataArray = lastAccessDataArray.filter((d) => d.test !== true);
+
+    //? Удаляем дубликаты из реальных данных перед возвратом
+    realDataArray = removeDuplicateDevices(realDataArray);
+
     const hasRealData = realDataArray.length > 0;
     const hasTestData = lastAccessDataArray.some((d) => d.test === true);
 
