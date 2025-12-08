@@ -9,7 +9,7 @@ const DevicesTable = ({ minersData = [] }) => {
     const [sortKey, setSortKey] = useState('name');
     const [sortDirection, setSortDirection] = useState('asc');
     const [filterStatus, setFilterStatus] = useState(null);
-    const [onlyActiveMiners, setOnlyActiveMiners] = useState(false);
+    const [onlyActiveMiners, setOnlyActiveMiners] = useState(true);
     const [itemsPerPage, setItemsPerPage] = useState(50);
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -217,24 +217,24 @@ const DevicesTable = ({ minersData = [] }) => {
                                     <button
                                         className={`w-full text-left`}
                                         onClick={(e) => {
-                                            setOnlyActiveMiners(true);
-                                            setFilterStatus(null);
-                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
-                                        }}
-                                    >
-                                        {t('dashboard.onlyActiveMiners')}
-                                    </button>
-                                </li>
-                                <li>
-                                    <button
-                                        className={`w-full text-left`}
-                                        onClick={(e) => {
                                             setFilterStatus(null);
                                             setOnlyActiveMiners(false);
                                             e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
                                         }}
                                     >
                                         {t('dashboard.allDevices')}
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        className={`w-full text-left`}
+                                        onClick={(e) => {
+                                            setOnlyActiveMiners(true);
+                                            setFilterStatus(null);
+                                            e.currentTarget.closest('.dropdown')?.querySelector('[tabIndex]')?.blur();
+                                        }}
+                                    >
+                                        {t('dashboard.onlyActiveMiners')}
                                     </button>
                                 </li>
                                 <li>
