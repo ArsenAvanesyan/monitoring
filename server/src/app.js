@@ -4,27 +4,27 @@ const path = require('path');
 // Загружаем .env файл явно из директории server (абсолютный путь)
 // Пробуем несколько возможных путей
 const possiblePaths = [
-  '/var/www/www-root/data/www/mon.incoel.ru/server/.env',
-  path.join(__dirname, '../../.env'),
-  path.join(process.cwd(), '.env')
+    '/var/www/www-root/data/www/mon.incoel.ru/server/.env',
+    path.join(__dirname, '../../.env'),
+    path.join(process.cwd(), '.env')
 ];
 
 let envLoaded = false;
 for (const envPath of possiblePaths) {
-  try {
-    const result = require("dotenv").config({ path: envPath });
-    if (!result.error) {
-      console.log('✅ .env загружен из:', envPath);
-      envLoaded = true;
-      break;
+    try {
+        const result = require("dotenv").config({ path: envPath });
+        if (!result.error) {
+            console.log('✅ .env загружен из:', envPath);
+            envLoaded = true;
+            break;
+        }
+    } catch (e) {
+        // Продолжаем пробовать другие пути
     }
-  } catch (e) {
-    // Продолжаем пробовать другие пути
-  }
 }
 
 if (!envLoaded) {
-  console.warn('⚠️ Не удалось загрузить .env файл. Пробовали пути:', possiblePaths);
+    console.warn('⚠️ Не удалось загрузить .env файл. Пробовали пути:', possiblePaths);
 }
 
 // Отладочный вывод переменных окружения (без значений для безопасности)
@@ -61,7 +61,7 @@ app.use(cors({
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-API-Key'],
 }));
 
 //конфигурация
@@ -70,9 +70,10 @@ app.use(cookieParser());
 
 // Обработка POST запросов на корневой путь от access.exe (ДО других маршрутов!)
 const { receiveData } = require("./controllers/accessController");
+const verifyAccessExeToken = require("./middleware/verifyAccessExeToken");
 
 // Middleware для приема бинарных данных на корневом пути (от access.exe)
-// Без авторизации (пока)
+// С проверкой токена
 app.post("/", express.raw({ type: '*/*', limit: '10mb' }), (req, res, next) => {
     console.log('\n🎯 POST запрос на корневой путь / от access.exe');
     // Сохраняем raw buffer для последующей обработки
@@ -81,7 +82,7 @@ app.post("/", express.raw({ type: '*/*', limit: '10mb' }), (req, res, next) => {
         console.log('✅ Raw buffer сохранен, размер:', req.rawBuffer.length, 'байт');
     }
     next();
-}, receiveData);
+}, verifyAccessExeToken, receiveData);
 
 //мaршрутизация
 const indexRouter = require("./routes/index.routes");
@@ -98,24 +99,24 @@ async function startServer() {
     const { waitForRedis } = require("./config/redisConfig");
     const SKIP_REDIS_WAIT = process.env.SKIP_REDIS_WAIT === 'true';
     const WAIT_FOR_REDIS = process.env.WAIT_FOR_REDIS !== 'false'; // По умолчанию true
-    
+
     // Ожидаем Redis, если не пропущено
     if (WAIT_FOR_REDIS && !SKIP_REDIS_WAIT) {
         console.log('🔄 Ожидание подключения к Redis...');
         const redisAvailable = await waitForRedis(30, 1000);
-        
+
         if (!redisAvailable) {
             console.error('❌ Redis недоступен. Сервер не будет запущен.');
             console.error('   Запустите Redis или установите SKIP_REDIS_WAIT=true для запуска без Redis');
             process.exit(1);
         }
     }
-    
+
     try {
         // Инициализируем Redis
         console.log('🔄 Инициализация Redis...');
         await initRedis();
-        
+
         // Проверяем подключение
         const isConnected = await testConnection();
         if (isConnected) {
@@ -126,7 +127,7 @@ async function startServer() {
     } catch (error) {
         if (SKIP_REDIS_WAIT) {
             console.warn('⚠️ Сервер будет работать без Redis. Некоторые функции могут быть недоступны.');
-            console.warn('⚠️ Убедитесь, что Redis запущен и доступен по адресу:', 
+            console.warn('⚠️ Убедитесь, что Redis запущен и доступен по адресу:',
                 `${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`);
         } else {
             console.error('❌ Ошибка инициализации Redis:', error.message);

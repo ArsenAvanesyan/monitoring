@@ -3,6 +3,7 @@
 const { receiveData, getLastData, clearData, removeDuplicates } = require("../controllers/accessController");
 const accessRouter = require("express").Router();
 const express = require("express");
+const verifyAccessExeToken = require("../middleware/verifyAccessExeToken");
 
 // Middleware для логирования всех запросов к /api/access/*
 accessRouter.use((req, res, next) => {
@@ -34,8 +35,9 @@ accessRouter.post("/data", express.raw({ type: '*/*', limit: '10mb' }), (req, re
     next();
 });
 
-// POST endpoint для приема данных от access.exe (без авторизации, пока)
-accessRouter.post("/data", receiveData);
+// POST endpoint для приема данных от access.exe (с проверкой токена)
+// Проверка токена выполняется ПЕРЕД обработкой данных
+accessRouter.post("/data", verifyAccessExeToken, receiveData);
 
 // GET endpoint для получения последних данных от access.exe
 accessRouter.get("/last", getLastData);
@@ -57,7 +59,7 @@ accessRouter.get("/data", async (req, res) => {
     console.log('Headers:', JSON.stringify(req.headers, null, 2));
     console.log('Body:', req.body);
     console.log('='.repeat(50));
-    
+
     // Если данные в query параметрах
     let data = {};
     if (Object.keys(req.query).length > 0) {
@@ -65,7 +67,7 @@ accessRouter.get("/data", async (req, res) => {
     } else if (req.body && Object.keys(req.body).length > 0) {
         data = req.body;
     }
-    
+
     // Пытаемся извлечь данные из URL, если они там есть
     // Например, если URL содержит JSON в параметре 'data'
     if (req.query.data) {
@@ -75,7 +77,7 @@ accessRouter.get("/data", async (req, res) => {
             console.log('Не удалось распарсить данные из query параметра data');
         }
     }
-    
+
     // Сохраняем данные, если они есть
     if (Object.keys(data).length > 0) {
         const { receiveData } = require("../controllers/accessController");
@@ -84,8 +86,8 @@ accessRouter.get("/data", async (req, res) => {
         await receiveData(req, res);
         return;
     }
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
         message: 'GET запрос получен, но данных не найдено',
         received: false,
         data: data,
