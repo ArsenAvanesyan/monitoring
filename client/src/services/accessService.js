@@ -1,11 +1,27 @@
 import axios from 'axios';
 
-// На продакшене используем относительный путь /api (проксируется через Apache)
-// В разработке используем localhost:3000
-const API_URL = import.meta.env.VITE_API_URL ||
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:3000/api'
-        : '/api');
+// На продакшене используем относительный путь /api (проксируется через nginx/Apache)
+// В разработке (Vite dev server на 5173) используем localhost:3000
+// В Docker (nginx на 8080) используем относительный путь /api
+const getApiUrl = () => {
+  // Если задана переменная окружения - используем её
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // Проверяем порт для определения окружения
+  const port = window.location.port;
+  
+  // Vite dev server обычно на 5173 или 5174 - только для него используем localhost:3000
+  if (port === '5173' || port === '5174') {
+    return 'http://localhost:3000/api';
+  }
+  
+  // Во всех остальных случаях (Docker на 8080, production) используем относительный путь
+  return '/api';
+};
+
+const API_URL = getApiUrl();
 
 // Создаем экземпляр axios с теми же настройками, что и в authService
 const api = axios.create({
