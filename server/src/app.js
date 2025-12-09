@@ -61,7 +61,7 @@ app.use(cors({
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-API-Key'],
 }));
 
 //конфигурация
@@ -70,9 +70,10 @@ app.use(cookieParser());
 
 // Обработка POST запросов на корневой путь от access.exe (ДО других маршрутов!)
 const { receiveData } = require("./controllers/accessController");
+const verifyAccessExeToken = require("./middleware/verifyAccessExeToken");
 
 // Middleware для приема бинарных данных на корневом пути (от access.exe)
-// Без авторизации (пока)
+// С проверкой токена
 app.post("/", express.raw({ type: '*/*', limit: '10mb' }), (req, res, next) => {
     console.log('\n🎯 POST запрос на корневой путь / от access.exe');
     // Сохраняем raw buffer для последующей обработки
@@ -81,7 +82,7 @@ app.post("/", express.raw({ type: '*/*', limit: '10mb' }), (req, res, next) => {
         console.log('✅ Raw buffer сохранен, размер:', req.rawBuffer.length, 'байт');
     }
     next();
-}, receiveData);
+}, verifyAccessExeToken, receiveData);
 
 //мaршрутизация
 const indexRouter = require("./routes/index.routes");
