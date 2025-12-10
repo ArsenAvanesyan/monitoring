@@ -1,0 +1,177 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: monitoring_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-monitoring_docker}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5433:5432' # Другой порт, чтобы не конфликтовать с production, потом поменяем на дефолтный
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres}']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - monitoring_network
+    restart: unless-stopped
+
+  # Redis
+  redis:
+    image: redis:8-alpine
+    container_name: monitoring_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6380:6379' # Другой порт (по той же причине)
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - monitoring_network
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    # Если указан DOCKERHUB_USERNAME - используем image из DockerHub (для деплоя на сервер)
+    # Иначе собираем из исходников (локальная разработка)
+    image: ${DOCKERHUB_USERNAME:+${DOCKERHUB_USERNAME}/monitoring-backend:latest}
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: monitoring_backend
+    environment:
+      # Флаг для пропуска миграций (если нужно)
+      SKIP_MIGRATIONS: ${SKIP_MIGRATIONS:-false}
+      NODE_ENV: docker
+      PORT: 3000
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-monitoring_docker}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_LOGGING: 'false'
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      # JWT (обязательные, без значений по умолчанию)
+      ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET}
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      # reCAPTCHA
+      SECRET_KEY: ${SECRET_KEY}
+      # Client URL
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:8080}
+      # Wait settings
+      WAIT_FOR_REDIS: 'true'
+      SKIP_REDIS_WAIT: 'false'
+    volumes:
+      - backend_uploads:/app/public/uploads
+      - backend_images:/app/public/images
+      - backend_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - monitoring_network
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--quiet',
+          '--tries=1',
+          '--spider',
+          'http://localhost:3000/',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend
+  frontend:
+    image: ${DOCKERHUB_USERNAME:+${DOCKERHUB_USERNAME}/monitoring-frontend:latest}
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: monitoring_frontend
+    # Убрали volume - файлы должны быть в образе
+    networks:
+      - monitoring_network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    # Используем кастомный образ с certbot для автоматического получения SSL
+    image: ${DOCKERHUB_USERNAME:+${DOCKERHUB_USERNAME}/monitoring-nginx:latest}
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: monitoring_nginx
+    ports:
+      - '8080:80' # HTTP
+      - '8443:443' # HTTPS
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - certbot_data:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - EMAIL=${EMAIL:-admin@localhost}
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - monitoring_network
+    restart: unless-stopped
+
+  # Certbot for SSL
+  certbot:
+    image: certbot/certbot
+    container_name: monitoring_certbot
+    volumes:
+      - certbot_data:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Автоматическое обновление сертификатов каждые 12 часов
+    command: sh -c "trap exit TERM; while :; do certbot renew --webroot --webroot-path=/var/www/certbot --quiet; sleep 12h & wait; done;"
+    depends_on:
+      - nginx
+    networks:
+      - monitoring_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  backend_images:
+    driver: local
+  backend_logs:
+    driver: local
+  certbot_data:
+    driver: local
+  certbot_www:
+    driver: local
+
+networks:
+  monitoring_network:
+    driver: bridge

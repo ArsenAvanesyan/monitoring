@@ -12,5 +12,13 @@
     "database": "monitoring",
     "host": "127.0.0.1",
     "dialect": "postgres"
+  },
+  "docker": {
+    "username": "postgres",
+    "password": "postgres",
+    "database": "monitoring_docker",
+    "host": "postgres",
+    "dialect": "postgres",
+    "use_env_variable": false
   }
 }

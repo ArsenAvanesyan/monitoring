@@ -16,8 +16,16 @@ const Login = () => {
     const { signIn, isAuthenticated, loading: authLoading } = useAuth();
     const navigate = useNavigate();
 
-    // Получаем SITE_KEY из переменных окружения
-    const recaptchaSiteKey = import.meta.env.VITE_SITE_KEY || '';
+    // Получаем SITE_KEY из переменных окружения (скрываем для localhost)
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' ||
+                        window.location.hostname === '';
+    const recaptchaSiteKey = (!isLocalhost && import.meta.env.VITE_SITE_KEY) ? import.meta.env.VITE_SITE_KEY : '';
+    
+    // Для отладки
+    if (isLocalhost) {
+        console.log('🏠 Локальный режим - reCAPTCHA отключена');
+    }
 
     useEffect(() => {
         if (!authLoading && isAuthenticated) {

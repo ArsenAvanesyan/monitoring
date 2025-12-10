@@ -1,11 +1,28 @@
 import axios from 'axios';
 
-// На продакшене используем относительный путь /api (проксируется через Apache)
-// В разработке используем localhost:3000
-const API_URL = import.meta.env.VITE_API_URL ||
-  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3000/api'
-    : '/api');
+// На продакшене используем относительный путь /api (проксируется через nginx/Apache)
+// В разработке (Vite dev server на 5173) используем localhost:3000
+// В Docker (nginx на 8080) используем относительный путь /api
+const getApiUrl = () => {
+  // Если задана переменная окружения - используем её
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // Проверяем port для определения окружения
+  const port = window.location.port;
+
+  // Vite dev server обычно на 5173 или 5174 - только для него используем localhost:3000
+  if (port === '5173' || port === '5174') {
+    return 'http://localhost:3000/api';
+  }
+
+  // Во всех остальных случаях (Docker на 8080, production) используем относительный путь
+  // Это работает, потому что nginx проксирует /api на backend
+  return '/api';
+};
+
+const API_URL = getApiUrl();
 
 const api = axios.create({
   baseURL: API_URL,
@@ -34,7 +51,7 @@ let isRefreshing = false;
 let failedQueue = [];
 
 const processQueue = (error, token = null) => {
-  failedQueue.forEach(prom => {
+  failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
@@ -52,21 +69,26 @@ api.interceptors.response.use(
 
     // Если ошибка 401 и это не запрос на обновление access token
     // Исключаем /auth/refresh и /auth/signin, /auth/signup чтобы избежать бесконечного цикла
-    const isAuthEndpoint = originalRequest.url?.includes('/auth/refresh') ||
+    const isAuthEndpoint =
+      originalRequest.url?.includes('/auth/refresh') ||
       originalRequest.url?.includes('/auth/signin') ||
       originalRequest.url?.includes('/auth/signup');
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
       if (isRefreshing) {
         // Если токен уже обновляется, добавляем запрос в очередь
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then(token => {
+          .then((token) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
             return api(originalRequest);
           })
-          .catch(err => {
+          .catch((err) => {
             return Promise.reject(err);
           });
       }
@@ -78,9 +100,13 @@ api.interceptors.response.use(
         // Пытаемся обновить access token через refresh token
         // Используем прямой axios запрос без Authorization заголовка, так как refresh token в cookies
         console.log('Attempting to refresh access token...');
-        const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
-          withCredentials: true,
-        });
+        const response = await axios.post(
+          `${API_URL}/auth/refresh`,
+          {},
+          {
+            withCredentials: true,
+          }
+        );
         const { accessToken } = response.data;
 
         if (!accessToken) {
@@ -91,16 +117,21 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
 
         // Уведомляем о обновлении токена через событие
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: 'accessToken',
-          newValue: accessToken,
-          oldValue: localStorage.getItem('accessToken')
-        }));
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: 'accessToken',
+            newValue: accessToken,
+            oldValue: localStorage.getItem('accessToken'),
+          })
+        );
 
         processQueue(null, accessToken);
         isRefreshing = false;
 
-        console.log('Access token refreshed successfully, retrying original request:', originalRequest.url);
+        console.log(
+          'Access token refreshed successfully, retrying original request:',
+          originalRequest.url
+        );
         // Повторяем оригинальный запрос с новым токеном
         return api(originalRequest);
       } catch (refreshError) {
@@ -110,7 +141,10 @@ api.interceptors.response.use(
 
         // Если не удалось обновить токен, очищаем данные и перенаправляем на логин
         localStorage.removeItem('accessToken');
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        if (
+          window.location.pathname !== '/login' &&
+          window.location.pathname !== '/register'
+        ) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
@@ -120,7 +154,10 @@ api.interceptors.response.use(
     // Для других ошибок (403 и т.д.)
     if (error.response?.status === 403) {
       localStorage.removeItem('accessToken');
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      if (
+        window.location.pathname !== '/login' &&
+        window.location.pathname !== '/register'
+      ) {
         window.location.href = '/login';
       }
     }
@@ -138,10 +175,10 @@ export const authService = {
 
   // Авторизация
   signIn: async (email, password, recaptchaToken = null) => {
-    const response = await api.post('/auth/signin', { 
-      email, 
+    const response = await api.post('/auth/signin', {
+      email,
       password,
-      recaptchaToken 
+      recaptchaToken,
     });
     return response.data;
   },
@@ -190,4 +227,3 @@ export const authService = {
 };
 
 export default authService;
-
