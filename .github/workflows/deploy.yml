@@ -110,7 +110,7 @@ jobs:
             EMAIL="${{ secrets.EMAIL }}" \
             docker compose pull nginx || exit 1
             echo "🔄 Перезапускаем nginx..."
-            docker compose up -d --force-recreate nginx || exit 1
+            docker compose up -d --no-build --force-recreate nginx || exit 1
             echo "✅ Nginx обновлён"
           EOF
 
