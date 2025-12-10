@@ -55,7 +55,7 @@ server {
 
     # POST на корневой путь → Backend (для access.exe)
     location = / {
-        limit_except GET HEAD {
+        if (\$request_method = POST) {
             proxy_pass http://backend;
             proxy_http_version 1.1;
             proxy_set_header Host \$host;
@@ -63,6 +63,7 @@ server {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_request_buffering off;
             proxy_buffering off;
+            break;
         }
         # GET и HEAD → Frontend
         proxy_pass http://frontend;
@@ -132,7 +133,7 @@ server {
 
     # POST на корневой путь → Backend (для access.exe)
     location = / {
-        limit_except GET HEAD {
+        if (\$request_method = POST) {
             proxy_pass http://backend;
             proxy_http_version 1.1;
             proxy_set_header Host \$host;
@@ -140,6 +141,7 @@ server {
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_request_buffering off;
             proxy_buffering off;
+            break;
         }
         # GET и HEAD → Frontend
         proxy_pass http://frontend;
@@ -243,7 +245,8 @@ server {
 
 # HTTPS сервер
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    http2 on;
     server_name ${DOMAIN};
 
     ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
@@ -275,7 +278,7 @@ server {
 
     # POST на корневой путь → Backend (для access.exe)
     location = / {
-        limit_except GET HEAD {
+        if (\$request_method = POST) {
             proxy_pass http://backend;
             proxy_http_version 1.1;
             proxy_set_header Host \$host;
@@ -284,6 +287,7 @@ server {
             proxy_set_header X-Forwarded-Proto \$scheme;
             proxy_request_buffering off;
             proxy_buffering off;
+            break;
         }
         # GET и HEAD → Frontend
         proxy_pass http://frontend;
