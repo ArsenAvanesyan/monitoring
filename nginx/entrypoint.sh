@@ -55,22 +55,20 @@ server {
 
     # POST на корневой путь → Backend (для access.exe)
     location = / {
-        if (\$request_method = POST) {
-            proxy_pass http://backend;
-            proxy_http_version 1.1;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_request_buffering off;
-            proxy_buffering off;
-            break;
-        }
-        # GET и HEAD → Frontend
-        proxy_pass http://frontend;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_request_buffering off;
+        proxy_buffering off;
+        
+        # POST → Backend
+        if (\$request_method = POST) {
+            proxy_pass http://backend;
+            break;
+        }
+        # GET и HEAD → Frontend
+        proxy_pass http://frontend;
     }
 
     # Все остальное → Frontend
@@ -133,22 +131,20 @@ server {
 
     # POST на корневой путь → Backend (для access.exe)
     location = / {
-        if (\$request_method = POST) {
-            proxy_pass http://backend;
-            proxy_http_version 1.1;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_request_buffering off;
-            proxy_buffering off;
-            break;
-        }
-        # GET и HEAD → Frontend
-        proxy_pass http://frontend;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_request_buffering off;
+        proxy_buffering off;
+        
+        # POST → Backend
+        if (\$request_method = POST) {
+            proxy_pass http://backend;
+            break;
+        }
+        # GET и HEAD → Frontend
+        proxy_pass http://frontend;
     }
 
     # Все остальное → Frontend

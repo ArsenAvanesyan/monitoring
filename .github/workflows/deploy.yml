@@ -52,13 +52,34 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest
           cache-to: type=inline
 
-      - name: Build and push Nginx (fix)
+      - name: Check if nginx changed
+        id: nginx_changed
+        run: |
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ] || [ -z "${{ github.event.before }}" ]; then
+            # Первый коммит или нет предыдущего - проверяем наличие файлов nginx
+            if [ -d "nginx" ] && [ "$(ls -A nginx)" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^nginx/"; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Build and push Nginx
+        if: steps.nginx_changed.outputs.changed == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./nginx
           push: true
           tags: ${{ env.DOCKERHUB_USERNAME }}/monitoring-nginx:latest
           platforms: linux/amd64
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-nginx:latest
+          cache-to: type=inline
 
   deploy:
     name: Deploy to Server
@@ -67,6 +88,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Check if nginx changed
+        id: nginx_changed
+        run: |
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ] || [ -z "${{ github.event.before }}" ]; then
+            if [ -d "nginx" ] && [ "$(ls -A nginx)" ]; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^nginx/"; then
+              echo "changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "changed=false" >> $GITHUB_OUTPUT
+            fi
+          fi
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -96,6 +134,21 @@ jobs:
             echo "📥 Загружаем новые образы..."
             DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
             docker compose pull frontend backend || exit 1
+          EOF
+
+      - name: Pull and restart Nginx (if changed)
+        if: steps.nginx_changed.outputs.changed == 'true'
+        run: |
+          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+            echo "📥 Загружаем новый nginx образ..."
+            DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
+            DOMAIN="${{ secrets.DOMAIN }}" \
+            EMAIL="${{ secrets.EMAIL }}" \
+            docker compose pull nginx || exit 1
+            echo "🔄 Перезапускаем nginx..."
+            docker compose up -d --force-recreate nginx || exit 1
+            echo "✅ Nginx обновлён"
           EOF
 
       - name: Stop old containers
