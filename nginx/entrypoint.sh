@@ -3,14 +3,11 @@
 
 set -e
 
-DOMAIN="${DOMAIN:-mon.incoel.ru}"
+DOMAIN="mon.incoel.ru"
 EMAIL="${EMAIL:-admin@${DOMAIN}}"
 
-# Определяем, локально ли мы (localhost, 127.0.0.1, или домен содержит localhost)
+# Всегда продакшн режим
 IS_LOCAL=false
-if echo "$DOMAIN" | grep -qE "(localhost|127\.0\.0\.1|\.local)"; then
-  IS_LOCAL=true
-fi
 
 echo "🔍 DOMAIN=${DOMAIN}, IS_LOCAL=${IS_LOCAL}"
 
@@ -273,24 +270,21 @@ server {
 
     # POST на корневой путь → Backend (для access.exe)
     location = / {
-        if (\$request_method = POST) {
-            proxy_pass http://backend;
-            proxy_http_version 1.1;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_request_buffering off;
-            proxy_buffering off;
-            break;
-        }
-        # GET и HEAD → Frontend
-        proxy_pass http://frontend;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_request_buffering off;
+        proxy_buffering off;
+        
+        # POST → Backend
+        if (\$request_method = POST) {
+            proxy_pass http://backend;
+            break;
+        }
+        # GET и HEAD → Frontend
+        proxy_pass http://frontend;
     }
 
     # Все остальное → Frontend
