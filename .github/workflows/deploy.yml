@@ -52,26 +52,7 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest
           cache-to: type=inline
 
-      - name: Check if nginx changed
-        id: nginx_changed
-        run: |
-          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ] || [ -z "${{ github.event.before }}" ]; then
-            # Первый коммит или нет предыдущего - проверяем наличие файлов nginx
-            if [ -d "nginx" ] && [ "$(ls -A nginx)" ]; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-            else
-              echo "changed=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^nginx/"; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-            else
-              echo "changed=false" >> $GITHUB_OUTPUT
-            fi
-          fi
-
       - name: Build and push Nginx
-        if: steps.nginx_changed.outputs.changed == 'true'
         uses: docker/build-push-action@v5
         with:
           context: ./nginx
@@ -88,23 +69,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Check if nginx changed
-        id: nginx_changed
-        run: |
-          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ] || [ -z "${{ github.event.before }}" ]; then
-            if [ -d "nginx" ] && [ "$(ls -A nginx)" ]; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-            else
-              echo "changed=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q "^nginx/"; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-            else
-              echo "changed=false" >> $GITHUB_OUTPUT
-            fi
-          fi
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -136,8 +100,7 @@ jobs:
             docker compose pull frontend backend || exit 1
           EOF
 
-      - name: Pull and restart Nginx (if changed)
-        if: steps.nginx_changed.outputs.changed == 'true'
+      - name: Pull and restart Nginx
         run: |
           ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
             cd ${{ env.DEPLOY_PATH }}
