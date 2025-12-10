@@ -52,6 +52,16 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest
           cache-to: type=inline
 
+      - name: Build and push Nginx
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nginx
+          push: true
+          tags: ${{ env.DOCKERHUB_USERNAME }}/monitoring-nginx:latest,${{ env.DOCKERHUB_USERNAME }}/monitoring-nginx:${{ github.sha }}
+          platforms: linux/amd64
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-nginx:latest
+          cache-to: type=inline
+
   deploy:
     name: Deploy to Server
     needs: build-and-push
@@ -67,18 +77,15 @@ jobs:
 
       - name: Add server to known hosts
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
           ssh-keyscan -p ${{ env.SSH_PORT }} ${{ env.SSH_HOST }} >> ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
 
       - name: Create backup of current images
         run: |
           ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
             cd ${{ env.DEPLOY_PATH }}
             echo "📦 Создаём резервную копию текущих образов..."
-            docker images --format "{{.Repository}}:{{.Tag}}" | grep "monitoring-frontend\|monitoring-backend" | while read image; do
-              if [ "$image" != "${{ env.DOCKERHUB_USERNAME }}/monitoring-frontend:latest" ] && [ "$image" != "${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest" ]; then
+            docker images --format "{{.Repository}}:{{.Tag}}" | grep "monitoring-frontend\|monitoring-backend\|monitoring-nginx" | while read image; do
+              if [ "$image" != "${{ env.DOCKERHUB_USERNAME }}/monitoring-frontend:latest" ] && [ "$image" != "${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest" ] && [ "$image" != "${{ env.DOCKERHUB_USERNAME }}/monitoring-nginx:latest" ]; then
                 docker tag "$image" "${image}-backup-$(date +%Y%m%d-%H%M%S)" || true
               fi
             done
@@ -90,7 +97,7 @@ jobs:
             cd ${{ env.DEPLOY_PATH }}
             echo "📥 Загружаем новые образы..."
             DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
-            docker compose pull frontend backend || exit 1
+            docker compose pull frontend backend nginx || exit 1
           EOF
 
       - name: Stop old containers
@@ -99,7 +106,7 @@ jobs:
             cd ${{ env.DEPLOY_PATH }}
             echo "🛑 Останавливаем старые контейнеры..."
             DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
-            docker compose stop frontend backend || true
+            docker compose stop frontend backend nginx || true
           EOF
 
       - name: Start new containers
@@ -117,7 +124,7 @@ jobs:
             CLIENT_URL="${{ secrets.CLIENT_URL }}" \
             DOMAIN="${{ secrets.DOMAIN }}" \
             EMAIL="${{ secrets.EMAIL }}" \
-            docker compose up -d --no-deps frontend backend || exit 1
+            docker compose up -d --no-deps frontend backend nginx || exit 1
           EOF
 
       - name: Wait for health check
@@ -128,7 +135,7 @@ jobs:
             sleep 30
             
             # Проверяем, что контейнеры запущены
-            if ! docker compose ps | grep -q "frontend.*Up\|backend.*Up"; then
+            if ! docker compose ps | grep -q "frontend.*Up\|backend.*Up\|nginx.*Up"; then
               echo "❌ Контейнеры не запустились!"
               exit 1
             fi
@@ -145,7 +152,7 @@ jobs:
             
             # Удаляем старые образы, оставляя последние 3 версии
             docker images --format "{{.Repository}}:{{.Tag}}" | \
-              grep "monitoring-frontend\|monitoring-backend" | \
+              grep "monitoring-frontend\|monitoring-backend\|monitoring-nginx" | \
               grep -v "latest" | \
               grep -v "backup" | \
               sort -r | \
@@ -172,9 +179,9 @@ jobs:
             echo "🔄 Откат к предыдущей версии..."
             
             # Останавливаем новые контейнеры
-            docker compose stop frontend backend || true
-            docker compose rm -f frontend backend || true
-            
+            docker compose stop frontend backend nginx || true
+            docker compose rm -f frontend backend nginx || true
+
             # Перезапускаем старые версии (docker compose up подтянет старые образы)
             DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
             POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
@@ -186,7 +193,7 @@ jobs:
             CLIENT_URL="${{ secrets.CLIENT_URL }}" \
             DOMAIN="${{ secrets.DOMAIN }}" \
             EMAIL="${{ secrets.EMAIL }}" \
-            docker compose up -d frontend backend || true
+            docker compose up -d frontend backend nginx || true
             
             echo "⚠️ Откат выполнен - контейнеры перезапущены"
           EOF

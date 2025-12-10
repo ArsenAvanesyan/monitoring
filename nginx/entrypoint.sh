@@ -275,18 +275,23 @@ server {
 
     # POST на корневой путь → Backend (для access.exe)
     location = / {
-        proxy_pass http://backend;
+        limit_except GET HEAD {
+            proxy_pass http://backend;
+            proxy_http_version 1.1;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_request_buffering off;
+            proxy_buffering off;
+        }
+        # GET и HEAD → Frontend
+        proxy_pass http://frontend;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_request_buffering off;
-        proxy_buffering off;
-        # Разрешаем только POST, остальные методы вернут 405
-        limit_except POST {
-            deny all;
-        }
     }
 
     # Все остальное → Frontend
