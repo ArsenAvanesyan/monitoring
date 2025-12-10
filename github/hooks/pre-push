@@ -1,0 +1,98 @@
+#!/bin/sh
+# Pre-push hook: проверяет сборку клиента и сервера перед push
+
+set -e
+
+# Определяем корень проекта (ищем директорию с client/ и server)
+PROJECT_ROOT="$(pwd)"
+while [ "$PROJECT_ROOT" != "/" ]; do
+    if [ -d "$PROJECT_ROOT/client" ] && [ -d "$PROJECT_ROOT/server" ]; then
+        break
+    fi
+    PROJECT_ROOT="$(dirname "$PROJECT_ROOT")"
+done
+
+if [ "$PROJECT_ROOT" = "/" ]; then
+    echo "❌ Не найден корень проекта (директория с client/ и server/)" >&2
+    exit 1
+fi
+
+# Переходим в корень проекта
+cd "$PROJECT_ROOT"
+
+echo "🔍 Проверка сборки перед push..."
+echo "📁 Рабочая директория: $PROJECT_ROOT"
+
+# Функция для вывода ошибки
+error() {
+    echo "❌ $1" >&2
+    exit 1
+}
+
+# Функция для вывода успеха
+success() {
+    echo "✅ $1"
+}
+
+# 1. Проверка сборки Frontend
+echo ""
+echo "📦 Сборка Frontend..."
+cd "$PROJECT_ROOT/client"
+
+# Проверяем наличие node_modules, если нет - устанавливаем
+if [ ! -d "node_modules" ]; then
+    echo "📥 Установка зависимостей frontend..."
+    npm install
+fi
+
+# Собираем frontend
+if npm run build 2>&1; then
+    success "Frontend собран успешно"
+else
+    # Если ошибка связана с rollup - переустанавливаем зависимости
+    if npm run build 2>&1 | grep -q "rollup\|MODULE_NOT_FOUND"; then
+        echo "🔄 Проблема с зависимостями, переустанавливаем..."
+        rm -rf node_modules package-lock.json
+        npm install
+        if npm run build; then
+            success "Frontend собран успешно после переустановки"
+        else
+            error "Ошибка сборки Frontend. Push отменён."
+        fi
+    else
+        error "Ошибка сборки Frontend. Push отменён."
+    fi
+fi
+
+# 2. Проверка Backend
+echo ""
+echo "🔧 Проверка Backend..."
+cd "$PROJECT_ROOT/server"
+
+# Проверяем наличие node_modules, если нет - устанавливаем
+if [ ! -d "node_modules" ]; then
+    echo "📥 Установка зависимостей backend..."
+    npm install
+fi
+
+# Проверяем синтаксис всех JS файлов в src/
+echo "🔍 Проверка синтаксиса файлов..."
+SYNTAX_ERRORS=0
+for file in $(find src -name "*.js" -type f); do
+    if ! node -c "$file" 2>/dev/null; then
+        echo "❌ Ошибка синтаксиса в $file"
+        SYNTAX_ERRORS=$((SYNTAX_ERRORS + 1))
+    fi
+done
+
+if [ $SYNTAX_ERRORS -eq 0 ]; then
+    success "Синтаксис Backend корректен (проверено файлов: $(find src -name "*.js" -type f | wc -l | tr -d ' '))"
+else
+    error "Найдено ошибок синтаксиса в Backend: $SYNTAX_ERRORS. Push отменён."
+fi
+
+cd "$PROJECT_ROOT"
+
+echo ""
+success "Все проверки пройдены! Push разрешён."
+exit 0
