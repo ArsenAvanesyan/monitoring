@@ -52,6 +52,14 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest
           cache-to: type=inline
 
+      - name: Build and push Nginx (fix)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./nginx
+          push: true
+          tags: ${{ env.DOCKERHUB_USERNAME }}/monitoring-nginx:latest
+          platforms: linux/amd64
+
   deploy:
     name: Deploy to Server
     needs: build-and-push
