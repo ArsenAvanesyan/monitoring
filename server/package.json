@@ -24,7 +24,9 @@
     "dev": "node scripts/wait-for-redis.js && nodemon src/app.js",
     "dbr": "npx sequelize db:migrate:undo:all && npx sequelize db:migrate && npx sequelize db:seed:all",
     "db:create": "node scripts/create-db.js",
-    "db:test": "node -e \"require('./src/config/database').testConnection()\""
+    "db:test": "node -e \"require('./src/config/database').testConnection()\"",
+    "format": "prettier --write \"**/*.{js,json}\"",
+    "format:check": "prettier --check \"**/*.{js,json}\""
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -33,6 +35,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/socket.io": "^3.0.1",
     "nodemon": "^3.1.10",
+    "prettier": "^3.2.5",
     "ts-node": "^10.9.2"
   }
 }

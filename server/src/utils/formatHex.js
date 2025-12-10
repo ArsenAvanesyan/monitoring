@@ -9,9 +9,7 @@ function formatHex(hexString, bytesPerLine = 16) {
     const ascii = line
       .map((b) => {
         const charCode = parseInt(b, 16);
-        return charCode >= 32 && charCode <= 126
-          ? String.fromCharCode(charCode)
-          : '.';
+        return charCode >= 32 && charCode <= 126 ? String.fromCharCode(charCode) : '.';
       })
       .join('');
     result += `${offset}:  ${hex.padEnd(48)}  ${ascii}\n`;

@@ -10,23 +10,20 @@ const getInitialLanguage = () => {
   return 'ru';
 };
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources: {
-      ru: {
-        translation: ruTranslations,
-      },
-      en: {
-        translation: enTranslations,
-      },
+i18n.use(initReactI18next).init({
+  resources: {
+    ru: {
+      translation: ruTranslations,
     },
-    lng: getInitialLanguage(),
-    fallbackLng: 'ru',
-    interpolation: {
-      escapeValue: false, // React уже экранирует значения
+    en: {
+      translation: enTranslations,
     },
-  });
+  },
+  lng: getInitialLanguage(),
+  fallbackLng: 'ru',
+  interpolation: {
+    escapeValue: false, // React уже экранирует значения
+  },
+});
 
 export default i18n;
-

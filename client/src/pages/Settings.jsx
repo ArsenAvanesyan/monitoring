@@ -12,7 +12,7 @@ const Settings = () => {
   });
 
   const handleChange = (key, value) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
       [key]: value,
     }));
@@ -119,9 +119,7 @@ const Settings = () => {
 
           {/* Кнопки действий */}
           <div className="flex justify-end gap-3">
-            <button className="btn btn-ghost">
-              {t('common.cancel')}
-            </button>
+            <button className="btn btn-ghost">{t('common.cancel')}</button>
             <button className="btn btn-primary" onClick={handleSave}>
               {t('settings.saveSettings')}
             </button>
@@ -133,4 +131,3 @@ const Settings = () => {
 };
 
 export default Settings;
-

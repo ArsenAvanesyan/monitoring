@@ -41,7 +41,10 @@ const removeDuplicateDevices = (devices) => {
 
   if (duplicatesRemoved.length > 0) {
     const uniqueDuplicates = [...new Set(duplicatesRemoved)];
-    console.log(`🧹 Удалено ${duplicatesRemoved.length} дубликатов устройств по IP (${uniqueDuplicates.length} уникальных IP):`, uniqueDuplicates);
+    console.log(
+      `🧹 Удалено ${duplicatesRemoved.length} дубликатов устройств по IP (${uniqueDuplicates.length} уникальных IP):`,
+      uniqueDuplicates
+    );
   }
 
   const result = Array.from(deviceMap.values());
@@ -54,9 +57,7 @@ const removeDuplicateDevices = (devices) => {
 exports.receiveData = async (req, res) => {
   try {
     //? Получаем счетчик из Redis
-    const receiveDataCount = await RedisService.increment(
-      REDIS_KEYS.COUNTER_RECEIVE
-    );
+    const receiveDataCount = await RedisService.increment(REDIS_KEYS.COUNTER_RECEIVE);
     //? Логируем все детали запроса для отладки
     console.log('='.repeat(50));
     console.log(`🔥 POST запрос #${receiveDataCount} от access.exe:`);
@@ -79,27 +80,15 @@ exports.receiveData = async (req, res) => {
     if (req.rawBuffer && Buffer.isBuffer(req.rawBuffer)) {
       rawBuffer = req.rawBuffer;
       rawText = req.rawBuffer.toString('utf8');
-      console.log(
-        '  ✅ Используем req.rawBuffer, размер:',
-        rawBuffer.length,
-        'байт'
-      );
+      console.log('  ✅ Используем req.rawBuffer, размер:', rawBuffer.length, 'байт');
     } else if (req.body && Buffer.isBuffer(req.body)) {
       rawBuffer = req.body;
       rawText = req.body.toString('utf8');
-      console.log(
-        '  ✅ Используем req.body (Buffer), размер:',
-        rawBuffer.length,
-        'байт'
-      );
+      console.log('  ✅ Используем req.body (Buffer), размер:', rawBuffer.length, 'байт');
     } else if (typeof req.body === 'string') {
       rawText = req.body;
       rawBuffer = Buffer.from(req.body, 'utf8');
-      console.log(
-        '  ✅ Используем req.body (string), размер:',
-        rawBuffer.length,
-        'байт'
-      );
+      console.log('  ✅ Используем req.body (string), размер:', rawBuffer.length, 'байт');
     } else if (req.body && typeof req.body === 'object') {
       //? Если это уже объект, преобразуем в строку для обработки
       rawText = JSON.stringify(req.body);
@@ -134,20 +123,14 @@ exports.receiveData = async (req, res) => {
     console.log('  User-Agent:', userAgent || '(пусто)');
     console.log('  Referer:', referer || '(пусто)');
     console.log('  Origin:', origin || '(пусто)');
-    console.log(
-      '  IP:',
-      req.headers['x-real-ip'] || req.ip || req.connection.remoteAddress
-    );
+    console.log('  IP:', req.headers['x-real-ip'] || req.ip || req.connection.remoteAddress);
     console.log('  От Dashboard:', isFromDashboard);
     console.log('  От access.exe:', isFromAccessExe);
 
     //? Парсим данные как NDJSON (newline-delimited JSON)
     let parsedData = [];
     if (rawText) {
-      console.log(
-        'Raw текст (первые 500 символов):',
-        rawText.substring(0, 500)
-      );
+      console.log('Raw текст (первые 500 символов):', rawText.substring(0, 500));
 
       //? Пытаемся распарсить как NDJSON (каждая строка - отдельный JSON)
       parsedData = parseNDJSON(rawText);
@@ -171,17 +154,11 @@ exports.receiveData = async (req, res) => {
           } catch (e2) {
             console.error('Не удалось распарсить данные:', e2.message);
             //? Сохраняем как есть
-            parsedData = [
-              { raw: rawText.substring(0, 1000), error: 'Parse error' },
-            ];
+            parsedData = [{ raw: rawText.substring(0, 1000), error: 'Parse error' }];
           }
         }
       }
-    } else if (
-      req.body &&
-      typeof req.body === 'object' &&
-      !Array.isArray(req.body)
-    ) {
+    } else if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
       //? Если body уже объект (не массив), оборачиваем в массив
       parsedData = [req.body];
     } else if (Array.isArray(req.body)) {
@@ -200,9 +177,7 @@ exports.receiveData = async (req, res) => {
 
     //? Если это данные от access.exe, обновляем устройства по IP вместо дублирования
     if (isFromAccessExe) {
-      console.log(
-        '🎯 Получены данные от access.exe - обновляем устройства по IP'
-      );
+      console.log('🎯 Получены данные от access.exe - обновляем устройства по IP');
       try {
         // Получаем существующие данные из Redis
         const existingData = await RedisService.getList(REDIS_KEYS.DATA_ARRAY);
@@ -216,7 +191,9 @@ exports.receiveData = async (req, res) => {
 
         // Сначала удаляем дубликаты из существующих данных
         const uniqueRealData = removeDuplicateDevices(realData);
-        console.log(`📋 Было устройств: ${realData.length}, стало уникальных: ${uniqueRealData.length}`);
+        console.log(
+          `📋 Было устройств: ${realData.length}, стало уникальных: ${uniqueRealData.length}`
+        );
 
         // Добавляем существующие реальные устройства в Map (ключ - IP)
         for (const device of uniqueRealData) {
@@ -260,20 +237,12 @@ exports.receiveData = async (req, res) => {
 
         // Сначала добавляем реальные данные
         for (const item of updatedRealData) {
-          await RedisService.pushToList(
-            REDIS_KEYS.DATA_ARRAY,
-            item,
-            MAX_HISTORY_SIZE
-          );
+          await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
         }
 
         // Затем добавляем тестовые данные (если они есть)
         for (const item of testData) {
-          await RedisService.pushToList(
-            REDIS_KEYS.DATA_ARRAY,
-            item,
-            MAX_HISTORY_SIZE
-          );
+          await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
         }
       } catch (error) {
         console.error('Ошибка при обновлении устройств по IP:', error);
@@ -291,11 +260,7 @@ exports.receiveData = async (req, res) => {
     //? (для access.exe мы уже обработали выше)
     if (!isFromAccessExe) {
       for (const item of parsedData) {
-        await RedisService.pushToList(
-          REDIS_KEYS.DATA_ARRAY,
-          item,
-          MAX_HISTORY_SIZE
-        );
+        await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
       }
     }
 
@@ -312,9 +277,7 @@ exports.receiveData = async (req, res) => {
     await RedisService.increment(REDIS_KEYS.COUNTER_RECEIVE);
 
     //? Логируем сохранение данных
-    const dataArrayLength = await RedisService.getListLength(
-      REDIS_KEYS.DATA_ARRAY
-    );
+    const dataArrayLength = await RedisService.getListLength(REDIS_KEYS.DATA_ARRAY);
     console.log('✅ Данные сохранены в Redis:');
     console.log(`Всего объектов в истории: ${dataArrayLength}`);
     console.log('lastAccessTimestamp:', timestamp);
@@ -390,20 +353,12 @@ exports.removeDuplicates = async (req, res) => {
 
     // Сначала добавляем реальные данные
     for (const item of uniqueRealData) {
-      await RedisService.pushToList(
-        REDIS_KEYS.DATA_ARRAY,
-        item,
-        MAX_HISTORY_SIZE
-      );
+      await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
     }
 
     // Затем добавляем тестовые данные (если они есть)
     for (const item of testData) {
-      await RedisService.pushToList(
-        REDIS_KEYS.DATA_ARRAY,
-        item,
-        MAX_HISTORY_SIZE
-      );
+      await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
     }
 
     // Обновляем LAST_DATA, если это массив устройств
@@ -438,25 +393,18 @@ exports.removeDuplicates = async (req, res) => {
 exports.getLastData = async (req, res) => {
   try {
     //? Инкрементируем счетчик запросов
-    const getLastDataCount = await RedisService.increment(
-      REDIS_KEYS.COUNTER_GET
-    );
+    const getLastDataCount = await RedisService.increment(REDIS_KEYS.COUNTER_GET);
 
     //? И Получаем данные из Redis
     const lastAccessData = await RedisService.get(REDIS_KEYS.LAST_DATA);
-    const lastAccessDataArray = await RedisService.getList(
-      REDIS_KEYS.DATA_ARRAY
-    );
+    const lastAccessDataArray = await RedisService.getList(REDIS_KEYS.DATA_ARRAY);
     const lastAccessTimestamp = await RedisService.get(REDIS_KEYS.TIMESTAMP);
     const lastHexData = await RedisService.get(REDIS_KEYS.HEX_DATA);
 
     //? Логируем запрос для отладки
     console.log('='.repeat(50));
     console.log(`📥 GET /api/access/last запрос #${getLastDataCount}:`);
-    console.log(
-      'lastAccessData:',
-      lastAccessData ? 'ЕСТЬ ДАННЫЕ' : 'НЕТ ДАННЫХ'
-    );
+    console.log('lastAccessData:', lastAccessData ? 'ЕСТЬ ДАННЫЕ' : 'НЕТ ДАННЫХ');
     console.log('Всего объектов в истории:', lastAccessDataArray.length);
 
     //? Фильтруем тестовые данные из ответа, если есть реальные данные

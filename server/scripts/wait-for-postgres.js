@@ -49,12 +49,8 @@ async function waitForPostgres() {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         process.stdout.write('\r');
       } else {
-        console.error(
-          `\n❌ PostgreSQL недоступен после ${maxAttempts} попыток`
-        );
-        console.error(
-          `   Проверьте, что PostgreSQL запущен на ${dbConfig.host}:${dbConfig.port}`
-        );
+        console.error(`\n❌ PostgreSQL недоступен после ${maxAttempts} попыток`);
+        console.error(`   Проверьте, что PostgreSQL запущен на ${dbConfig.host}:${dbConfig.port}`);
         console.error(`   Ошибка: ${error.message}`);
         process.exit(1);
       }

@@ -74,11 +74,7 @@ api.interceptors.response.use(
       originalRequest.url?.includes('/auth/signin') ||
       originalRequest.url?.includes('/auth/signup');
 
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !isAuthEndpoint
-    ) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         // Если токен уже обновляется, добавляем запрос в очередь
         return new Promise((resolve, reject) => {
@@ -141,10 +137,7 @@ api.interceptors.response.use(
 
         // Если не удалось обновить токен, очищаем данные и перенаправляем на логин
         localStorage.removeItem('accessToken');
-        if (
-          window.location.pathname !== '/login' &&
-          window.location.pathname !== '/register'
-        ) {
+        if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
@@ -154,10 +147,7 @@ api.interceptors.response.use(
     // Для других ошибок (403 и т.д.)
     if (error.response?.status === 403) {
       localStorage.removeItem('accessToken');
-      if (
-        window.location.pathname !== '/login' &&
-        window.location.pathname !== '/register'
-      ) {
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
         window.location.href = '/login';
       }
     }

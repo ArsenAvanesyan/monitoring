@@ -85,7 +85,8 @@ const Profile = () => {
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       // Обрабатываем разные типы ошибок
-      const errorMessage = err.response?.data?.message || err.message || t('profile.errors.tokenError');
+      const errorMessage =
+        err.response?.data?.message || err.message || t('profile.errors.tokenError');
       setError(errorMessage);
 
       // Если ошибка 429 (слишком много запросов), показываем более понятное сообщение
@@ -264,7 +265,8 @@ const Profile = () => {
               </div>
               <label className="label">
                 <span className="label-text-alt text-primary/50">
-                  Используйте этот токен в access.exe. Добавьте его в заголовок Authorization или в query параметр ?token=YOUR_TOKEN
+                  Используйте этот токен в access.exe. Добавьте его в заголовок Authorization или в
+                  query параметр ?token=YOUR_TOKEN
                 </span>
               </label>
               {!user.token && (
@@ -343,7 +345,9 @@ const Profile = () => {
                     {formData.password && (
                       <div>
                         <label className="label">
-                          <span className="label-text font-semibold">{t('profile.confirmPassword')}</span>
+                          <span className="label-text font-semibold">
+                            {t('profile.confirmPassword')}
+                          </span>
                         </label>
                         <input
                           type="password"
@@ -361,11 +365,7 @@ const Profile = () => {
 
               <div className="mt-6 flex gap-3">
                 {!isEditing ? (
-                  <button
-                    type="button"
-                    className="btn btn-info"
-                    onClick={() => setIsEditing(true)}
-                  >
+                  <button type="button" className="btn btn-info" onClick={() => setIsEditing(true)}>
                     {t('profile.editProfile')}
                   </button>
                 ) : (
@@ -398,11 +398,7 @@ const Profile = () => {
                     </button>
                   </>
                 )}
-                <button
-                  type="button"
-                  className="btn btn-error ml-auto"
-                  onClick={handleLogout}
-                >
+                <button type="button" className="btn btn-error ml-auto" onClick={handleLogout}>
                   {t('profile.logout')}
                 </button>
               </div>

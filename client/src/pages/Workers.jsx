@@ -13,9 +13,7 @@ const Workers = () => {
             <h1 className="text-3xl font-bold mb-2">{t('workers.title')}</h1>
             <p className="text-primary/70">{t('workers.subtitle')}</p>
           </div>
-          <button className="btn btn-primary">
-            {t('workers.addWorker')}
-          </button>
+          <button className="btn btn-primary">{t('workers.addWorker')}</button>
         </div>
 
         <div className="card bg-base-200 shadow-xl">
@@ -23,9 +21,7 @@ const Workers = () => {
             {workers.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-primary/70 mb-4">{t('workers.noWorkers')}</p>
-                <button className="btn btn-primary btn-sm">
-                  {t('workers.addFirstWorker')}
-                </button>
+                <button className="btn btn-primary btn-sm">{t('workers.addFirstWorker')}</button>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -68,4 +64,3 @@ const Workers = () => {
 };
 
 export default Workers;
-

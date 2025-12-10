@@ -1,7 +1,7 @@
 // ./middleware/verifyAccessExeToken.js
 
-require("dotenv").config();
-const UserServices = require("../services/UserServices");
+require('dotenv').config();
+const UserServices = require('../services/UserServices');
 
 /**
  * Middleware для проверки токена от access.exe
@@ -24,7 +24,10 @@ async function verifyAccessExeToken(req, res, next) {
     console.log('  Method:', req.method);
     console.log('  Content-Type:', req.headers['content-type'] || '(не указан)');
     console.log('  Content-Length:', req.headers['content-length'] || '(не указан)');
-    console.log('  X-API-Key header:', apiKey ? `present (${apiKey.substring(0, 10)}...)` : 'MISSING ❌');
+    console.log(
+      '  X-API-Key header:',
+      apiKey ? `present (${apiKey.substring(0, 10)}...)` : 'MISSING ❌'
+    );
 
     // Пытаемся получить информацию о данных (если они есть)
     if (req.rawBuffer && Buffer.isBuffer(req.rawBuffer)) {
@@ -43,7 +46,8 @@ async function verifyAccessExeToken(req, res, next) {
 
       // Отправляем ответ и закрываем соединение
       res.status(401).json({
-        message: "Токен доступа не предоставлен. Токен должен быть в заголовке X-API-Key. Соединение закрыто."
+        message:
+          'Токен доступа не предоставлен. Токен должен быть в заголовке X-API-Key. Соединение закрыто.',
       });
       // Закрываем соединение
       if (req.destroy) {
@@ -68,7 +72,7 @@ async function verifyAccessExeToken(req, res, next) {
 
       // Отправляем ответ и закрываем соединение
       res.status(401).json({
-        message: "Неверный токен доступа. Соединение закрыто."
+        message: 'Неверный токен доступа. Соединение закрыто.',
       });
       // Закрываем соединение
       if (req.destroy) {
@@ -97,8 +101,8 @@ async function verifyAccessExeToken(req, res, next) {
 
     // Отправляем ответ и закрываем соединение при ошибке
     res.status(500).json({
-      message: "Ошибка проверки токена доступа",
-      error: error.message
+      message: 'Ошибка проверки токена доступа',
+      error: error.message,
     });
     // Закрываем соединение
     if (req.destroy) {
@@ -111,4 +115,3 @@ async function verifyAccessExeToken(req, res, next) {
 }
 
 module.exports = verifyAccessExeToken;
-

@@ -1,20 +1,20 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
-import { AuthProvider } from './context/AuthContext'
-import Sidebar from './components/Sidebar'
-import Header from './components/Header'
-import ProtectedRoute from './components/ProtectedRoute'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Profile from './pages/Profile'
-import Dashboard from './pages/Dashboard'
-import Devices from './pages/Devices'
-import Pools from './pages/Pools'
-import Workers from './pages/Workers'
-import Alerts from './pages/Alerts'
-import Maintenance from './pages/Maintenance'
-import Settings from './pages/Settings'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { AuthProvider } from './context/AuthContext';
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Profile from './pages/Profile';
+import Dashboard from './pages/Dashboard';
+import Devices from './pages/Devices';
+import Pools from './pages/Pools';
+import Workers from './pages/Workers';
+import Alerts from './pages/Alerts';
+import Maintenance from './pages/Maintenance';
+import Settings from './pages/Settings';
+import './App.css';
 
 const AppLayout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -43,7 +43,7 @@ const AppLayout = () => {
         className="flex min-h-screen transition-all duration-300"
         style={{
           marginLeft: isSidebarCollapsed ? '80px' : '256px',
-          marginTop: '73px' // Высота Header
+          marginTop: '73px', // Высота Header
         }}
       >
         <div className="flex-1 flex flex-col w-full">
@@ -86,7 +86,7 @@ function App() {
         </div>
       </Router>
     </AuthProvider>
-  )
+  );
 }
 
-export default App
+export default App;

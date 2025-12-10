@@ -35,12 +35,7 @@ const serverConfig = (app) => {
     express.json({
       verify: (req, res, buf, encoding) => {
         // Логируем raw данные только для маршрутов /api/access (кроме /data)
-        if (
-          req.path &&
-          req.path.startsWith('/api/access') &&
-          buf &&
-          buf.length
-        ) {
+        if (req.path && req.path.startsWith('/api/access') && buf && buf.length) {
           const rawData = buf.toString(encoding || 'utf8');
           console.log('='.repeat(50));
           console.log('Raw данные от access.exe (до парсинга JSON):');

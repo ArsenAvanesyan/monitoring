@@ -23,10 +23,9 @@ async function createDatabaseIfNotExists() {
     console.log(`🔍 Проверка существования БД "${targetDbName}"...`);
 
     //? Проверяем, существует ли БД
-    const result = await client.query(
-      `SELECT 1 FROM pg_database WHERE datname = $1`,
-      [targetDbName]
-    );
+    const result = await client.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [
+      targetDbName,
+    ]);
 
     //! Если БД существует, выводим сообщение и закрываем соединение
     if (result.rows.length > 0) {

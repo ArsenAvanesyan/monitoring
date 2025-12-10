@@ -49,10 +49,7 @@ const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-40" onClick={onClose} />
 
       {/* Modal */}
       <div className="fixed right-4 top-16 w-96 bg-base-200 rounded-lg shadow-xl z-50 border border-base-300 text-primary">
@@ -61,15 +58,10 @@ const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
             <BellIcon className="w-5 h-5" />
             <h3 className="text-lg font-semibold">{t('notificationsModal.title')}</h3>
             {displayNotifications.length > 0 && (
-              <span className="badge badge-primary badge-sm">
-                {displayNotifications.length}
-              </span>
+              <span className="badge badge-primary badge-sm">{displayNotifications.length}</span>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="btn btn-ghost btn-sm btn-circle"
-          >
+          <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle">
             ✕
           </button>
         </div>
@@ -89,17 +81,13 @@ const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
                   onClick={onClose}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${getNotificationColor(notification.type)} bg-current`} />
+                    <div
+                      className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${getNotificationColor(notification.type)} bg-current`}
+                    />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-primary">
-                        {notification.title}
-                      </p>
-                      <p className="text-sm text-primary/70 mt-1">
-                        {notification.message}
-                      </p>
-                      <p className="text-xs text-primary/50 mt-1">
-                        {notification.time}
-                      </p>
+                      <p className="text-sm font-semibold text-primary">{notification.title}</p>
+                      <p className="text-sm text-primary/70 mt-1">{notification.message}</p>
+                      <p className="text-xs text-primary/50 mt-1">{notification.time}</p>
                     </div>
                   </div>
                 </li>
@@ -110,10 +98,7 @@ const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
 
         {displayNotifications.length > 0 && (
           <div className="p-4 border-t border-base-300">
-            <button
-              onClick={onClose}
-              className="btn btn-primary btn-sm w-full"
-            >
+            <button onClick={onClose} className="btn btn-primary btn-sm w-full">
               {t('notificationsModal.markAllRead')}
             </button>
           </div>
@@ -124,4 +109,3 @@ const NotificationsModal = ({ isOpen, onClose, notifications = [] }) => {
 };
 
 export default NotificationsModal;
-

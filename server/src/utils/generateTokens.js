@@ -1,8 +1,8 @@
 // ./utils/generateTokens.js
 
-require("dotenv").config();
-const jwt = require("jsonwebtoken");
-const jwtConfig = require("../config/jwtConfig");
+require('dotenv').config();
+const jwt = require('jsonwebtoken');
+const jwtConfig = require('../config/jwtConfig');
 
 function generateTokens(payload) {
   // Проверка наличия секретных ключей

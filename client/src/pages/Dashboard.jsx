@@ -26,27 +26,15 @@ const Dashboard = () => {
 
       if (
         response &&
-        ((response.data !== null && response.data !== undefined) ||
-          response.allData)
+        ((response.data !== null && response.data !== undefined) || response.allData)
       ) {
         console.log('✅ Данные получены:', response);
-        console.log(
-          '  Реальных данных:',
-          response.hasRealData ? 'ЕСТЬ' : 'НЕТ'
-        );
-        console.log(
-          '  Тестовых данных:',
-          response.hasTestData ? 'ЕСТЬ' : 'НЕТ'
-        );
-        console.log(
-          '  Всего объектов:',
-          response.totalCount || response.count || 0
-        );
+        console.log('  Реальных данных:', response.hasRealData ? 'ЕСТЬ' : 'НЕТ');
+        console.log('  Тестовых данных:', response.hasTestData ? 'ЕСТЬ' : 'НЕТ');
+        console.log('  Всего объектов:', response.totalCount || response.count || 0);
 
         // Используем реальные данные, если они есть, иначе все данные
-        const dataToUse = response.hasRealData
-          ? response.allData
-          : response.allData || [];
+        const dataToUse = response.hasRealData ? response.allData : response.allData || [];
 
         // Обрабатываем массив данных
         if (dataToUse && Array.isArray(dataToUse) && dataToUse.length > 0) {
@@ -83,12 +71,10 @@ const Dashboard = () => {
   }, []);
 
   return (
-    <div className='p-4 md:p-6 lg:p-8 w-full'>
-      <div className='w-full text-primary'>
-        <h1 className='text-3xl font-bold mb-2 text-primary'>
-          {t('dashboard.title')}
-        </h1>
-        <p className='text-primary mb-8'>{t('dashboard.subtitle')}</p>
+    <div className="p-4 md:p-6 lg:p-8 w-full">
+      <div className="w-full text-primary">
+        <h1 className="text-3xl font-bold mb-2 text-primary">{t('dashboard.title')}</h1>
+        <p className="text-primary mb-8">{t('dashboard.subtitle')}</p>
 
         {/* KPI Cards */}
         {hasData ? (
