@@ -14,9 +14,9 @@ RUN npm ci --only=production && npm cache clean --force
 # Копируем исходный код
 COPY . .
 
-# Копируем entrypoint скрипт
-COPY scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+# Устанавливаем права на выполнение и исправляем окончания строк (если нужно)
+RUN chmod +x /app/scripts/docker-entrypoint.sh && \
+    sed -i 's/\r$//' /app/scripts/docker-entrypoint.sh || true
 
 # Создаем необходимые директории
 RUN mkdir -p logs public/images public/uploads && \
@@ -28,4 +28,4 @@ USER node
 EXPOSE 3000
 
 # Используем entrypoint скрипт для запуска миграций перед приложением
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
