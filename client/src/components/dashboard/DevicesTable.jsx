@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { convertMinersToDevices } from './utils/minerDataConverter';
+import { useTimeAgo } from '../../hooks/useTimeAgo';
 import {
   ChevronDownIcon,
   FilterIcon,
@@ -10,7 +11,7 @@ import {
   MenuDotsIcon,
 } from '../../svg/icons';
 
-const DevicesTable = ({ minersData = [] }) => {
+const DevicesTable = ({ minersData = [], lastUpdateTimestamp = null }) => {
   const { t } = useTranslation();
   const [selectedDevices, setSelectedDevices] = useState(new Set());
   const [sortKey, setSortKey] = useState('name');
@@ -19,6 +20,9 @@ const DevicesTable = ({ minersData = [] }) => {
   const [onlyActiveMiners, setOnlyActiveMiners] = useState(true);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Получаем время с момента последнего обновления
+  const timeAgo = useTimeAgo(lastUpdateTimestamp);
 
   // Преобразуем данные от access.exe в формат для таблицы
   const devices = convertMinersToDevices(minersData);
@@ -218,6 +222,12 @@ const DevicesTable = ({ minersData = [] }) => {
                 </li>
               </ul>
             </div>
+            {/* Таймер последнего обновления */}
+            {lastUpdateTimestamp && timeAgo && (
+              <div className="text-sm text-primary/70">
+                {t('dashboard.lastUpdate')} {timeAgo.value} {t(`dashboard.timeUnits.${timeAgo.unit}`, { count: timeAgo.value })} {t('dashboard.ago')}
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {/* Filter Dropdown */}

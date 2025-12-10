@@ -125,7 +125,15 @@
     "show50": "50",
     "show100": "100",
     "show255": "255",
-    "showAll": "Все"
+    "showAll": "Все",
+    "lastUpdate": "Последнее обновление было",
+    "ago": "назад",
+    "timeUnits": {
+      "seconds": "сек",
+      "minutes": "мин",
+      "hours": "ч",
+      "days": "д"
+    }
   },
   "devices": {
     "title": "Устройства",

@@ -10,6 +10,7 @@ const Dashboard = () => {
   const { t } = useTranslation();
   const [timeRange, setTimeRange] = useState('24h');
   const [accessDataArray, setAccessDataArray] = useState([]);
+  const [lastUpdateTimestamp, setLastUpdateTimestamp] = useState(null);
 
   // Преобразуем данные от access.exe в формат устройств
   const devices = convertMinersToDevices(accessDataArray);
@@ -20,19 +21,18 @@ const Dashboard = () => {
   // Загрузка данных от access.exe
   const fetchAccessData = async () => {
     try {
-      console.log('🔄 Начало загрузки данных от access.exe...');
       const response = await accessService.getLastData();
       console.log('📥 Ответ от сервера:', response);
+
+      // Обновляем timestamp, если он есть в ответе (независимо от наличия данных)
+      if (response && response.timestamp) {
+        setLastUpdateTimestamp(response.timestamp);
+      }
 
       if (
         response &&
         ((response.data !== null && response.data !== undefined) || response.allData)
       ) {
-        console.log('✅ Данные получены:', response);
-        console.log('  Реальных данных:', response.hasRealData ? 'ЕСТЬ' : 'НЕТ');
-        console.log('  Тестовых данных:', response.hasTestData ? 'ЕСТЬ' : 'НЕТ');
-        console.log('  Всего объектов:', response.totalCount || response.count || 0);
-
         // Используем реальные данные, если они есть, иначе все данные
         const dataToUse = response.hasRealData ? response.allData : response.allData || [];
 
@@ -48,7 +48,6 @@ const Dashboard = () => {
           setAccessDataArray([]);
         }
       } else {
-        console.log('ℹ️ Данные еще не получены от access.exe');
         setAccessDataArray([]);
       }
     } catch (error) {
@@ -83,7 +82,7 @@ const Dashboard = () => {
             {/* Charts Section */}
             <ChartsSection timeRange={timeRange} onTimeRangeChange={setTimeRange} />
             {/* Devices Table - использует данные от access.exe */}
-            <DevicesTable minersData={accessDataArray} />
+            <DevicesTable minersData={accessDataArray} lastUpdateTimestamp={lastUpdateTimestamp} />
           </>
         ) : (
           <div className="card bg-base-200 shadow-xl border border-secondary">

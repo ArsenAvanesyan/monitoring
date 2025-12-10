@@ -39,7 +39,6 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    console.log('📤 API Request:', config.method?.toUpperCase(), config.baseURL + config.url);
     return config;
   },
   (error) => {
@@ -82,9 +81,7 @@ export const accessService = {
   // Получение последних данных от access.exe
   getLastData: async () => {
     try {
-      console.log('🔍 Запрос данных от access.exe...');
       const response = await api.get('/access/last');
-      console.log('📦 Получены данные:', response.data);
 
       // Проверяем, что получили JSON, а не HTML
       if (typeof response.data === 'string' && response.data.includes('<!doctype html>')) {
@@ -101,9 +98,7 @@ export const accessService = {
   // Очистка данных
   clearData: async () => {
     try {
-      console.log('🧹 Очистка данных...');
       const response = await api.post('/access/clear');
-      console.log('✅ Данные очищены:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Ошибка при очистке данных:', error);

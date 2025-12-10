@@ -90,7 +90,7 @@ app.post(
   '/',
   express.raw({ type: '*/*', limit: '10mb' }),
   (req, res, next) => {
-    console.log('\n🎯 POST запрос на корневой путь / от access.exe');
+    console.log('\n🎯 POST запрос на корневой путь / ');
     // Сохраняем raw buffer для последующей обработки
     if (req.body && Buffer.isBuffer(req.body)) {
       req.rawBuffer = req.body;

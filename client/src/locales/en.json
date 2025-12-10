@@ -125,7 +125,15 @@
     "show50": "50",
     "show100": "100",
     "show255": "255",
-    "showAll": "All"
+    "showAll": "All",
+    "lastUpdate": "Last update was",
+    "ago": "ago",
+    "timeUnits": {
+      "seconds": "sec",
+      "minutes": "min",
+      "hours": "h",
+      "days": "d"
+    }
   },
   "devices": {
     "title": "Devices",
