@@ -52,16 +52,6 @@ jobs:
           cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest
           cache-to: type=inline
 
-      - name: Build and push Nginx
-        uses: docker/build-push-action@v5
-        with:
-          context: ./nginx
-          push: true
-          tags: ${{ env.DOCKERHUB_USERNAME }}/monitoring-nginx:latest
-          platforms: linux/amd64
-          cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-nginx:latest
-          cache-to: type=inline
-
   deploy:
     name: Deploy to Server
     needs: build-and-push
@@ -98,20 +88,6 @@ jobs:
             echo "📥 Загружаем новые образы..."
             DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
             docker compose pull frontend backend || exit 1
-          EOF
-
-      - name: Pull and restart Nginx
-        run: |
-          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
-            cd ${{ env.DEPLOY_PATH }}
-            echo "📥 Загружаем новый nginx образ..."
-            DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
-            DOMAIN="${{ secrets.DOMAIN }}" \
-            EMAIL="${{ secrets.EMAIL }}" \
-            docker compose pull nginx || exit 1
-            echo "🔄 Перезапускаем nginx..."
-            docker compose up -d --no-build --force-recreate nginx || exit 1
-            echo "✅ Nginx обновлён"
           EOF
 
       - name: Stop old containers
