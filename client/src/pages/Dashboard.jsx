@@ -78,6 +78,8 @@ const Dashboard = () => {
   // Загружаем данные при монтировании и обновляем каждые 5 секунд
   useEffect(() => {
     fetchAccessData();
+    console.log("♥♦♣♠←------→♥♦♣♠")
+    console.log("←---♥♦♣♠---→")
     const interval = setInterval(fetchAccessData, 5000);
     return () => clearInterval(interval);
   }, []);
