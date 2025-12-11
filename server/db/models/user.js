@@ -46,6 +46,11 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 'half-year',
         comment: 'Период хранения истории: year, half-year, 3months, 1month',
       },
+      isHuman: {
+        type: DataTypes.BOOLEAN,
+        allowNull: true,
+        defaultValue: true,
+      },
     },
     {
       sequelize,
