@@ -13,9 +13,7 @@ const Devices = () => {
             <h1 className="text-3xl font-bold mb-2">{t('devices.title')}</h1>
             <p className="text-primary/70">{t('devices.subtitle')}</p>
           </div>
-          <button className="btn btn-primary">
-            {t('devices.addDevice')}
-          </button>
+          <button className="btn btn-primary">{t('devices.addDevice')}</button>
         </div>
 
         <div className="card bg-base-200 shadow-xl">
@@ -23,9 +21,7 @@ const Devices = () => {
             {devices.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-primary/70 mb-4">{t('devices.noDevices')}</p>
-                <button className="btn btn-primary btn-sm">
-                  {t('devices.addFirstDevice')}
-                </button>
+                <button className="btn btn-primary btn-sm">{t('devices.addFirstDevice')}</button>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -65,4 +61,3 @@ const Devices = () => {
 };
 
 export default Devices;
-

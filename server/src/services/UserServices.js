@@ -31,10 +31,7 @@ async function invalidateUserCache(user) {
     }
   } catch (error) {
     //! Игнорируем ошибки кэша, не критично
-    console.warn(
-      'Предупреждение: не удалось инвалидировать кэш пользователя:',
-      error.message
-    );
+    console.warn('Предупреждение: не удалось инвалидировать кэш пользователя:', error.message);
   }
 }
 
@@ -53,11 +50,7 @@ class UserServices {
       //? Кэшируем нового пользователя
       if (userData) {
         try {
-          await RedisService.set(
-            getCacheKey.userById(userData.id),
-            userData,
-            CACHE_TTL.USER
-          );
+          await RedisService.set(getCacheKey.userById(userData.id), userData, CACHE_TTL.USER);
           if (userData.email) {
             await RedisService.set(
               getCacheKey.userByEmail(userData.email),
@@ -121,18 +114,13 @@ class UserServices {
       if (userData) {
         try {
           await RedisService.set(cacheKey, userData, CACHE_TTL.USER);
-          console.log(`💾 [CACHE SET] Пользователь сохранен в Redis: ${cacheKey} (TTL: ${CACHE_TTL.USER}s)`);
+          console.log(
+            `💾 [CACHE SET] Пользователь сохранен в Redis: ${cacheKey} (TTL: ${CACHE_TTL.USER}s)`
+          );
           //? Также кэшируем по ID для быстрого доступа
-          await RedisService.set(
-            getCacheKey.userById(userData.id),
-            userData,
-            CACHE_TTL.USER
-          );
+          await RedisService.set(getCacheKey.userById(userData.id), userData, CACHE_TTL.USER);
         } catch (cacheError) {
-          console.warn(
-            'Предупреждение: не удалось закэшировать пользователя:',
-            cacheError.message
-          );
+          console.warn('Предупреждение: не удалось закэшировать пользователя:', cacheError.message);
         }
       }
 
@@ -168,17 +156,12 @@ class UserServices {
       if (userData) {
         try {
           await RedisService.set(cacheKey, userData, CACHE_TTL.USER);
-          console.log(`💾 [CACHE SET] Пользователь сохранен в Redis: ${cacheKey} (TTL: ${CACHE_TTL.USER}s)`);
-          await RedisService.set(
-            getCacheKey.userById(userData.id),
-            userData,
-            CACHE_TTL.USER
+          console.log(
+            `💾 [CACHE SET] Пользователь сохранен в Redis: ${cacheKey} (TTL: ${CACHE_TTL.USER}s)`
           );
+          await RedisService.set(getCacheKey.userById(userData.id), userData, CACHE_TTL.USER);
         } catch (cacheError) {
-          console.warn(
-            'Предупреждение: не удалось закэшировать пользователя:',
-            cacheError.message
-          );
+          console.warn('Предупреждение: не удалось закэшировать пользователя:', cacheError.message);
         }
       }
 
@@ -190,12 +173,7 @@ class UserServices {
 
   static async updateUser(userId, updateData) {
     try {
-      console.log(
-        'UserServices: Обновляем пользователя ID:',
-        userId,
-        'с данными:',
-        updateData
-      );
+      console.log('UserServices: Обновляем пользователя ID:', userId, 'с данными:', updateData);
 
       //? Получаем старые данные пользователя для инвалидации кэша
       const oldUser = await User.findByPk(userId);
@@ -205,17 +183,11 @@ class UserServices {
         where: { id: userId },
       });
 
-      console.log(
-        'UserServices: Количество обновленных строк:',
-        updatedRowsCount
-      );
+      console.log('UserServices: Количество обновленных строк:', updatedRowsCount);
 
       const user = await User.findByPk(userId);
       const userData = user ? user.get() : null;
-      console.log(
-        'UserServices: Найденный пользователь после обновления:',
-        userData
-      );
+      console.log('UserServices: Найденный пользователь после обновления:', userData);
 
       //? Инвалидируем старый кэш
       if (oldUserData) {
@@ -225,11 +197,7 @@ class UserServices {
       //? Кэшируем обновленные данные
       if (userData) {
         try {
-          await RedisService.set(
-            getCacheKey.userById(userData.id),
-            userData,
-            CACHE_TTL.USER
-          );
+          await RedisService.set(getCacheKey.userById(userData.id), userData, CACHE_TTL.USER);
           if (userData.email) {
             await RedisService.set(
               getCacheKey.userByEmail(userData.email),
@@ -301,12 +269,11 @@ class UserServices {
       if (userData) {
         try {
           await RedisService.set(cacheKey, userData, CACHE_TTL.USER);
-          console.log(`💾 [CACHE SET] Пользователь сохранен в Redis: ${cacheKey} (TTL: ${CACHE_TTL.USER}s)`);
-        } catch (cacheError) {
-          console.warn(
-            'Предупреждение: не удалось закэшировать пользователя:',
-            cacheError.message
+          console.log(
+            `💾 [CACHE SET] Пользователь сохранен в Redis: ${cacheKey} (TTL: ${CACHE_TTL.USER}s)`
           );
+        } catch (cacheError) {
+          console.warn('Предупреждение: не удалось закэшировать пользователя:', cacheError.message);
         }
       }
 
@@ -351,17 +318,12 @@ class UserServices {
       if (userData) {
         try {
           await RedisService.set(cacheKey, userData, CACHE_TTL.TOKEN);
-          console.log(`💾 [CACHE SET] Пользователь сохранен в Redis: ${cacheKey} (TTL: ${CACHE_TTL.TOKEN}s)`);
-          await RedisService.set(
-            getCacheKey.userById(userData.id),
-            userData,
-            CACHE_TTL.USER
+          console.log(
+            `💾 [CACHE SET] Пользователь сохранен в Redis: ${cacheKey} (TTL: ${CACHE_TTL.TOKEN}s)`
           );
+          await RedisService.set(getCacheKey.userById(userData.id), userData, CACHE_TTL.USER);
         } catch (cacheError) {
-          console.warn(
-            'Предупреждение: не удалось закэшировать пользователя:',
-            cacheError.message
-          );
+          console.warn('Предупреждение: не удалось закэшировать пользователя:', cacheError.message);
         }
       }
 

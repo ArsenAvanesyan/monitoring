@@ -13,9 +13,7 @@ const Maintenance = () => {
             <h1 className="text-3xl font-bold mb-2">{t('maintenance.title')}</h1>
             <p className="text-primary/70">{t('maintenance.subtitle')}</p>
           </div>
-          <button className="btn btn-primary">
-            {t('maintenance.createTask')}
-          </button>
+          <button className="btn btn-primary">{t('maintenance.createTask')}</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -67,14 +65,20 @@ const Maintenance = () => {
                         <td>{task.device}</td>
                         <td>{new Date(task.date).toLocaleDateString()}</td>
                         <td>
-                          <span className={`badge ${
-                            task.status === 'completed' ? 'badge-success' :
-                            task.status === 'in-progress' ? 'badge-warning' :
-                            'badge-info'
-                          }`}>
-                            {task.status === 'completed' ? t('maintenance.statusCompleted') :
-                             task.status === 'in-progress' ? t('maintenance.statusInProgress') :
-                             t('maintenance.statusScheduled')}
+                          <span
+                            className={`badge ${
+                              task.status === 'completed'
+                                ? 'badge-success'
+                                : task.status === 'in-progress'
+                                  ? 'badge-warning'
+                                  : 'badge-info'
+                            }`}
+                          >
+                            {task.status === 'completed'
+                              ? t('maintenance.statusCompleted')
+                              : task.status === 'in-progress'
+                                ? t('maintenance.statusInProgress')
+                                : t('maintenance.statusScheduled')}
                           </span>
                         </td>
                         <td>
@@ -97,4 +101,3 @@ const Maintenance = () => {
 };
 
 export default Maintenance;
-

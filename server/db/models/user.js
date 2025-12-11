@@ -1,7 +1,5 @@
 'use strict';
-const {
-  Model
-} = require('sequelize');
+const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
   class User extends Model {
     /**
@@ -11,35 +9,48 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      User.hasMany(models.Miner, {
+        foreignKey: 'userId',
+        as: 'miners',
+      });
     }
   }
-  User.init({
-    login: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true
+  User.init(
+    {
+      login: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      email: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        unique: true,
+      },
+      password: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      token: DataTypes.STRING,
+      photo: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      lastTokenRefresh: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+      historyRetentionPeriod: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'half-year',
+        comment: 'Период хранения истории: year, half-year, 3months, 1month',
+      },
     },
-    email: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    token: DataTypes.STRING,
-    photo: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    lastTokenRefresh: {
-      type: DataTypes.DATE,
-      allowNull: true,
+    {
+      sequelize,
+      modelName: 'User',
     }
-  }, {
-    sequelize,
-    modelName: 'User',
-  });
+  );
   return User;
 };

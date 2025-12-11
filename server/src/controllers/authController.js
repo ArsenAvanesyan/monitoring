@@ -21,16 +21,12 @@ async function verifyRecaptcha(token) {
   }
 
   try {
-    const response = await axios.post(
-      'https://www.google.com/recaptcha/api/siteverify',
-      null,
-      {
-        params: {
-          secret: secretKey,
-          response: token,
-        },
-      }
-    );
+    const response = await axios.post('https://www.google.com/recaptcha/api/siteverify', null, {
+      params: {
+        secret: secretKey,
+        response: token,
+      },
+    });
 
     return response.data && response.data.success === true;
   } catch (error) {
@@ -66,17 +62,13 @@ exports.signUp = async (req, res) => {
     // Проверка существования пользователя с таким email
     let userByEmail = await UserServices.getUserByEmail(normalizedEmail);
     if (userByEmail) {
-      return res
-        .status(400)
-        .json({ message: 'Такая почта уже зарегистрирована!' });
+      return res.status(400).json({ message: 'Такая почта уже зарегистрирована!' });
     }
 
     // Проверка существования пользователя с таким login
     const userByLogin = await UserServices.getUserByLogin(login);
     if (userByLogin) {
-      return res
-        .status(400)
-        .json({ message: 'Пользователь с таким логином уже существует!' });
+      return res.status(400).json({ message: 'Пользователь с таким логином уже существует!' });
     }
 
     // Генерация токена (16 символов из 8 байт)
@@ -138,16 +130,12 @@ exports.signIn = async (req, res) => {
 
     if (process.env.SECRET_KEY && !isLocalhost) {
       if (!recaptchaToken) {
-        return res
-          .status(400)
-          .json({ message: 'Пожалуйста, подтвердите, что вы не робот' });
+        return res.status(400).json({ message: 'Пожалуйста, подтвердите, что вы не робот' });
       }
 
       const isRecaptchaValid = await verifyRecaptcha(recaptchaToken);
       if (!isRecaptchaValid) {
-        return res
-          .status(400)
-          .json({ message: 'Ошибка проверки reCAPTCHA. Попробуйте еще раз.' });
+        return res.status(400).json({ message: 'Ошибка проверки reCAPTCHA. Попробуйте еще раз.' });
       }
     }
 
@@ -155,18 +143,14 @@ exports.signIn = async (req, res) => {
     const user = await UserServices.getUserByEmail(email.trim().toLowerCase());
 
     if (!user) {
-      return res
-        .status(400)
-        .json({ message: 'Почта или пароль введены неверно!' });
+      return res.status(400).json({ message: 'Почта или пароль введены неверно!' });
     }
 
     // Проверка пароля
     const compare = await bcrypt.compare(password, user.password);
 
     if (!compare) {
-      return res
-        .status(400)
-        .json({ message: 'Почта или пароль введены неверно!' });
+      return res.status(400).json({ message: 'Почта или пароль введены неверно!' });
     }
 
     // Удаляем пароль из ответа
@@ -193,10 +177,7 @@ exports.signIn = async (req, res) => {
 exports.logout = async (req, res) => {
   try {
     res.locals.user = null;
-    res
-      .clearCookie(jwtConfig.refresh.type)
-      .status(200)
-      .json({ message: 'Успешный выход!' });
+    res.clearCookie(jwtConfig.refresh.type).status(200).json({ message: 'Успешный выход!' });
   } catch (error) {
     console.error('Ошибка выхода:', error);
     res.status(500).json({ error: error.message });

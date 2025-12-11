@@ -125,7 +125,15 @@
     "show50": "50",
     "show100": "100",
     "show255": "255",
-    "showAll": "All"
+    "showAll": "All",
+    "lastUpdate": "Last update was",
+    "ago": "ago",
+    "timeUnits": {
+      "seconds": "sec",
+      "minutes": "min",
+      "hours": "h",
+      "days": "d"
+    }
   },
   "devices": {
     "title": "Devices",
@@ -190,12 +198,21 @@
     "dataRefresh": "Data Refresh",
     "autoRefresh": "Auto refresh",
     "refreshInterval": "Refresh interval (seconds)",
+    "historyRecording": "History Recording",
+    "historyRetentionPeriod": "History recording period",
+    "historyRetentionDescription": "Records older than the selected period will be automatically deleted",
+    "retentionYear": "Year",
+    "retentionHalfYear": "Half year",
+    "retention3Months": "3 months",
+    "retention1Month": "1 month",
     "appearance": "Appearance",
     "theme": "Theme",
     "themeAuto": "Auto",
     "themeLight": "Light",
     "themeDark": "Dark",
-    "saveSettings": "Save Settings"
+    "saveSettings": "Save Settings",
+    "saveSuccess": "Settings saved successfully",
+    "saveError": "Error saving settings"
   },
   "profile": {
     "title": "Profile",

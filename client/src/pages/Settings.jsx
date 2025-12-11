@@ -1,26 +1,57 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
+import authService from '../services/authService';
 
 const Settings = () => {
   const { t } = useTranslation();
+  const { user, updateProfile } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [settings, setSettings] = useState({
     notifications: true,
     emailAlerts: false,
     autoRefresh: true,
     refreshInterval: 30,
     theme: 'auto',
+    historyRetentionPeriod: 'half-year',
   });
 
+  // Загружаем настройки пользователя при монтировании компонента
+  useEffect(() => {
+    if (user) {
+      setSettings((prev) => ({
+        ...prev,
+        historyRetentionPeriod: user.historyRetentionPeriod || 'half-year',
+      }));
+    }
+  }, [user]);
+
   const handleChange = (key, value) => {
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
       [key]: value,
     }));
   };
 
-  const handleSave = () => {
-    // Здесь будет логика сохранения настроек
-    console.log('Settings saved:', settings);
+  const handleSave = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      // Сохраняем настройку historyRetentionPeriod через updateProfile
+      await updateProfile({
+        historyRetentionPeriod: settings.historyRetentionPeriod,
+      });
+      setSuccess(t('settings.saveSuccess'));
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError(err.message || t('settings.saveError'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -96,6 +127,33 @@ const Settings = () => {
             </div>
           </div>
 
+          {/* История данных */}
+          <div className="card bg-base-200 shadow-xl">
+            <div className="card-body">
+              <h2 className="card-title mb-4">{t('settings.historyRecording')}</h2>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">{t('settings.historyRetentionPeriod')}</span>
+                </label>
+                <select
+                  className="select select-bordered w-full bg-base-100"
+                  value={settings.historyRetentionPeriod}
+                  onChange={(e) => handleChange('historyRetentionPeriod', e.target.value)}
+                >
+                  <option value="year">{t('settings.retentionYear')}</option>
+                  <option value="half-year">{t('settings.retentionHalfYear')}</option>
+                  <option value="3months">{t('settings.retention3Months')}</option>
+                  <option value="1month">{t('settings.retention1Month')}</option>
+                </select>
+                <label className="label">
+                  <span className="label-text-alt text-primary/70">
+                    {t('settings.historyRetentionDescription')}
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
           {/* Внешний вид */}
           <div className="card bg-base-200 shadow-xl">
             <div className="card-body">
@@ -117,12 +175,23 @@ const Settings = () => {
             </div>
           </div>
 
+          {/* Сообщения об ошибках и успехе */}
+          {error && (
+            <div className="alert alert-error">
+              <span>{error}</span>
+            </div>
+          )}
+
+          {success && (
+            <div className="alert alert-success">
+              <span>{success}</span>
+            </div>
+          )}
+
           {/* Кнопки действий */}
           <div className="flex justify-end gap-3">
-            <button className="btn btn-ghost">
-              {t('common.cancel')}
-            </button>
-            <button className="btn btn-primary" onClick={handleSave}>
+            <button className="btn btn-ghost">{t('common.cancel')}</button>
+            <button className={`btn btn-primary ${loading ? 'loading' : ''}`} onClick={handleSave} disabled={loading}>
               {t('settings.saveSettings')}
             </button>
           </div>
@@ -133,4 +202,3 @@ const Settings = () => {
 };
 
 export default Settings;
-

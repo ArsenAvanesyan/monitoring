@@ -2,7 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
-import { DashboardIcon, DevicesIcon, PoolsIcon, WorkersIcon, SettingsIcon, AlertsIcon, MaintenanceIcon, ChevronLeftIcon, ChevronRightIcon } from '../svg/icons';
+import {
+  DashboardIcon,
+  DevicesIcon,
+  PoolsIcon,
+  WorkersIcon,
+  SettingsIcon,
+  AlertsIcon,
+  MaintenanceIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from '../svg/icons';
 
 const Sidebar = ({ isCollapsed, onToggle }) => {
   const location = useLocation();
@@ -57,7 +67,9 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
   };
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-base-200 text-primary border-r border-accent z-40 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <aside
+      className={`fixed left-0 top-0 h-screen bg-base-200 text-primary border-r border-accent z-40 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}
+    >
       <div className="flex flex-col h-full">
         {/* Toggle Button */}
         <div className="flex justify-end p-4">
@@ -88,9 +100,10 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
                     className={`
                       flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-primary
                       ${isCollapsed ? 'justify-center' : ''}
-                      ${active
-                        ? 'bg-secondary text-accent-content font-semibold'
-                        : 'text-primary hover:bg-base-300'
+                      ${
+                        active
+                          ? 'bg-secondary text-accent-content font-semibold'
+                          : 'text-primary hover:bg-base-300'
                       }
                     `}
                     title={isCollapsed ? item.label : ''}
@@ -98,9 +111,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
                     <Icon
                       className={`w-5 h-5 flex-shrink-0 ${active ? 'text-accent-content' : ''}`}
                     />
-                    {!isCollapsed && (
-                      <span className="whitespace-nowrap">{item.label}</span>
-                    )}
+                    {!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
                   </Link>
                 </li>
               );
@@ -113,4 +124,3 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
 };
 
 export default Sidebar;
-

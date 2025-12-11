@@ -8,10 +8,7 @@ function parseNDJSON(text) {
       const obj = JSON.parse(line.trim());
       parsed.push(obj);
     } catch (e) {
-      console.warn(
-        'Не удалось распарсить строку как JSON:',
-        line.substring(0, 100)
-      );
+      console.warn('Не удалось распарсить строку как JSON:', line.substring(0, 100));
     }
   }
 

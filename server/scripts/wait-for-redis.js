@@ -13,9 +13,7 @@ const maxAttempts = parseInt(process.env.REDIS_MAX_ATTEMPTS || '30', 10);
 const delayMs = parseInt(process.env.REDIS_WAIT_DELAY || '1000', 10);
 
 async function waitForRedis() {
-  console.log(
-    `🔄 Ожидание подключения к Redis (${redisConfig.host}:${redisConfig.port})...`
-  );
+  console.log(`🔄 Ожидание подключения к Redis (${redisConfig.host}:${redisConfig.port})...`);
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -44,9 +42,7 @@ async function waitForRedis() {
         process.stdout.write('\r');
       } else {
         console.error(`\n❌ Redis недоступен после ${maxAttempts} попыток`);
-        console.error(
-          `   Проверьте, что Redis запущен на ${redisConfig.host}:${redisConfig.port}`
-        );
+        console.error(`   Проверьте, что Redis запущен на ${redisConfig.host}:${redisConfig.port}`);
         console.error(`   Ошибка: ${error.message}`);
         process.exit(1);
       }

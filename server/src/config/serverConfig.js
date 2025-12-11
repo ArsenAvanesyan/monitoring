@@ -21,12 +21,12 @@ const serverConfig = (app) => {
   app.use(express.static(path.join(__dirname, '../../', 'public')));
   app.use(express.urlencoded({ extended: true }));
 
-  // JSON парсер с исключением для /api/access/data и корневого пути / (там обрабатываем бинарные данные)
+  // JSON парсер с исключением для /api/access/data, /api и корневого пути / (там обрабатываем бинарные данные)
   app.use((req, res, next) => {
-    // Пропускаем /api/access/data и корневой путь / - там обрабатываем бинарные данные отдельно
+    // Пропускаем /api/access/data, /api и корневой путь / - там обрабатываем бинарные данные отдельно
     if (
       req.path &&
-      (req.path === '/api/access/data' || req.path === '/') &&
+      (req.path === '/api/access/data' || req.path === '/api' || req.path === '/') &&
       req.method === 'POST'
     ) {
       return next();
@@ -35,12 +35,7 @@ const serverConfig = (app) => {
     express.json({
       verify: (req, res, buf, encoding) => {
         // Логируем raw данные только для маршрутов /api/access (кроме /data)
-        if (
-          req.path &&
-          req.path.startsWith('/api/access') &&
-          buf &&
-          buf.length
-        ) {
+        if (req.path && req.path.startsWith('/api/access') && buf && buf.length) {
           const rawData = buf.toString(encoding || 'utf8');
           console.log('='.repeat(50));
           console.log('Raw данные от access.exe (до парсинга JSON):');

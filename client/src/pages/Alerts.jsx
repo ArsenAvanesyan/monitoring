@@ -14,12 +14,8 @@ const Alerts = () => {
             <p className="text-primary/70">{t('alerts.subtitle')}</p>
           </div>
           <div className="flex gap-2">
-            <button className="btn btn-ghost">
-              {t('alerts.alertSettings')}
-            </button>
-            <button className="btn btn-primary">
-              {t('alerts.createAlert')}
-            </button>
+            <button className="btn btn-ghost">{t('alerts.alertSettings')}</button>
+            <button className="btn btn-primary">{t('alerts.createAlert')}</button>
           </div>
         </div>
 
@@ -49,9 +45,7 @@ const Alerts = () => {
             {alerts.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-primary/70 mb-4">{t('alerts.noAlerts')}</p>
-                <p className="text-sm text-primary/50">
-                  {t('alerts.allSystemsOk')}
-                </p>
+                <p className="text-sm text-primary/50">{t('alerts.allSystemsOk')}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -59,9 +53,11 @@ const Alerts = () => {
                   <div
                     key={alert.id}
                     className={`alert ${
-                      alert.severity === 'critical' ? 'alert-error' :
-                      alert.severity === 'warning' ? 'alert-warning' :
-                      'alert-info'
+                      alert.severity === 'critical'
+                        ? 'alert-error'
+                        : alert.severity === 'warning'
+                          ? 'alert-warning'
+                          : 'alert-info'
                     }`}
                   >
                     <div className="flex-1">
@@ -84,4 +80,3 @@ const Alerts = () => {
 };
 
 export default Alerts;
-

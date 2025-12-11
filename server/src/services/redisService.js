@@ -68,10 +68,7 @@ class RedisService {
       const result = await client.exists(key);
       return result === 1;
     } catch (error) {
-      console.error(
-        `❌ Ошибка проверки существования ключа (key: ${key}):`,
-        error
-      );
+      console.error(`❌ Ошибка проверки существования ключа (key: ${key}):`, error);
       return false;
     }
   }
@@ -112,10 +109,7 @@ class RedisService {
 
       return true;
     } catch (error) {
-      console.error(
-        `❌ Ошибка добавления в список Redis (key: ${key}):`,
-        error
-      );
+      console.error(`❌ Ошибка добавления в список Redis (key: ${key}):`, error);
       throw error;
     }
   }
@@ -133,10 +127,7 @@ class RedisService {
         }
       });
     } catch (error) {
-      console.error(
-        `❌ Ошибка получения списка из Redis (key: ${key}):`,
-        error
-      );
+      console.error(`❌ Ошибка получения списка из Redis (key: ${key}):`, error);
       return [];
     }
   }
@@ -169,10 +160,7 @@ class RedisService {
       await client.hSet(key, field, serializedValue);
       return true;
     } catch (error) {
-      console.error(
-        `❌ Ошибка сохранения хеша в Redis (key: ${key}, field: ${field}):`,
-        error
-      );
+      console.error(`❌ Ошибка сохранения хеша в Redis (key: ${key}, field: ${field}):`, error);
       throw error;
     }
   }
@@ -188,10 +176,7 @@ class RedisService {
 
       return JSON.parse(value);
     } catch (error) {
-      console.error(
-        `❌ Ошибка получения хеша из Redis (key: ${key}, field: ${field}):`,
-        error
-      );
+      console.error(`❌ Ошибка получения хеша из Redis (key: ${key}, field: ${field}):`, error);
       return null;
     }
   }
@@ -212,10 +197,7 @@ class RedisService {
 
       return result;
     } catch (error) {
-      console.error(
-        `❌ Ошибка получения всех полей хеша (key: ${key}):`,
-        error
-      );
+      console.error(`❌ Ошибка получения всех полей хеша (key: ${key}):`, error);
       return {};
     }
   }
@@ -226,10 +208,7 @@ class RedisService {
       await client.hDel(key, field);
       return true;
     } catch (error) {
-      console.error(
-        `❌ Ошибка удаления поля хеша (key: ${key}, field: ${field}):`,
-        error
-      );
+      console.error(`❌ Ошибка удаления поля хеша (key: ${key}, field: ${field}):`, error);
       throw error;
     }
   }

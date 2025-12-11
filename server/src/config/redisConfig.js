@@ -71,9 +71,7 @@ async function initRedis() {
 //? Получение клиента Redis
 function getRedisClient() {
   if (!redisClient || !redisClient.isOpen) {
-    throw new Error(
-      'Redis клиент не инициализирован. Вызовите initRedis() сначала.'
-    );
+    throw new Error('Redis клиент не инициализирован. Вызовите initRedis() сначала.');
   }
   return redisClient;
 }

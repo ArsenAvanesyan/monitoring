@@ -1,8 +1,11 @@
 const RedisService = require('../services/redisService');
+const MinerService = require('../services/minerService');
 const { REDIS_KEYS, MAX_HISTORY_SIZE } = require('../consts/redis-keys');
 const bufferToHex = require('../utils/bufferToHex');
 const formatHex = require('../utils/formatHex');
 const parseNDJSON = require('../utils/parseNDJSON');
+const { processGzipArchive } = require('../utils/gzipUtils');
+const websocketService = require('../services/websocketService');
 
 //? Функция для нормализации IP адреса (приводит к строке и убирает пробелы)
 const normalizeIp = (ip) => {
@@ -41,7 +44,10 @@ const removeDuplicateDevices = (devices) => {
 
   if (duplicatesRemoved.length > 0) {
     const uniqueDuplicates = [...new Set(duplicatesRemoved)];
-    console.log(`🧹 Удалено ${duplicatesRemoved.length} дубликатов устройств по IP (${uniqueDuplicates.length} уникальных IP):`, uniqueDuplicates);
+    console.log(
+      `🧹 Удалено ${duplicatesRemoved.length} дубликатов устройств по IP (${uniqueDuplicates.length} уникальных IP):`,
+      uniqueDuplicates
+    );
   }
 
   const result = Array.from(deviceMap.values());
@@ -54,9 +60,7 @@ const removeDuplicateDevices = (devices) => {
 exports.receiveData = async (req, res) => {
   try {
     //? Получаем счетчик из Redis
-    const receiveDataCount = await RedisService.increment(
-      REDIS_KEYS.COUNTER_RECEIVE
-    );
+    const receiveDataCount = await RedisService.increment(REDIS_KEYS.COUNTER_RECEIVE);
     //? Логируем все детали запроса для отладки
     console.log('='.repeat(50));
     console.log(`🔥 POST запрос #${receiveDataCount} от access.exe:`);
@@ -70,47 +74,64 @@ exports.receiveData = async (req, res) => {
     //? Получаем raw body как Buffer или строку
     let rawText = null;
     let rawBuffer = null;
+    const isGzip = req.isGzip || req.headers['content-type'] === 'application/gzip';
+    const filename = req.filename || req.headers['x-filename'] || null;
 
     console.log('🔍 Анализ тела запроса:');
     console.log('  req.rawBuffer существует:', !!req.rawBuffer);
     console.log('  req.body тип:', typeof req.body);
     console.log('  req.body является Buffer:', Buffer.isBuffer(req.body));
+    console.log('  Это gzip архив:', isGzip ? 'ДА' : 'НЕТ');
+    if (filename) {
+      console.log('  Имя файла:', filename);
+    }
 
-    if (req.rawBuffer && Buffer.isBuffer(req.rawBuffer)) {
-      rawBuffer = req.rawBuffer;
-      rawText = req.rawBuffer.toString('utf8');
-      console.log(
-        '  ✅ Используем req.rawBuffer, размер:',
-        rawBuffer.length,
-        'байт'
-      );
-    } else if (req.body && Buffer.isBuffer(req.body)) {
-      rawBuffer = req.body;
-      rawText = req.body.toString('utf8');
-      console.log(
-        '  ✅ Используем req.body (Buffer), размер:',
-        rawBuffer.length,
-        'байт'
-      );
-    } else if (typeof req.body === 'string') {
-      rawText = req.body;
-      rawBuffer = Buffer.from(req.body, 'utf8');
-      console.log(
-        '  ✅ Используем req.body (string), размер:',
-        rawBuffer.length,
-        'байт'
-      );
-    } else if (req.body && typeof req.body === 'object') {
-      //? Если это уже объект, преобразуем в строку для обработки
-      rawText = JSON.stringify(req.body);
-      rawBuffer = Buffer.from(rawText, 'utf8');
-      console.log(
-        '  ✅ Используем req.body (object), преобразован в строку, размер:',
-        rawBuffer.length,
-        'байт'
-      );
+    //? Если это gzip архив - распаковываем
+    if (isGzip) {
+      try {
+        const gzipBuffer = req.rawBuffer || (req.body && Buffer.isBuffer(req.body) ? req.body : null);
+
+        if (!gzipBuffer) {
+          throw new Error('Не удалось получить gzip данные из запроса');
+        }
+
+        console.log('📦 Обнаружен gzip архив, начинаем распаковку...');
+        rawText = await processGzipArchive(gzipBuffer, filename);
+        rawBuffer = Buffer.from(rawText, 'utf8');
+        console.log('  ✅ Gzip архив распакован и обработан');
+      } catch (error) {
+        console.error('❌ Ошибка обработки gzip архива:', error);
+        return res.status(400).json({
+          error: 'Ошибка обработки gzip архива',
+          message: error.message,
+        });
+      }
     } else {
-      console.log('  ⚠️ Тело запроса пусто или неизвестного типа');
+      //? Обычная обработка (не gzip)
+      if (req.rawBuffer && Buffer.isBuffer(req.rawBuffer)) {
+        rawBuffer = req.rawBuffer;
+        rawText = req.rawBuffer.toString('utf8');
+        console.log('  ✅ Используем req.rawBuffer, размер:', rawBuffer.length, 'байт');
+      } else if (req.body && Buffer.isBuffer(req.body)) {
+        rawBuffer = req.body;
+        rawText = req.body.toString('utf8');
+        console.log('  ✅ Используем req.body (Buffer), размер:', rawBuffer.length, 'байт');
+      } else if (typeof req.body === 'string') {
+        rawText = req.body;
+        rawBuffer = Buffer.from(req.body, 'utf8');
+        console.log('  ✅ Используем req.body (string), размер:', rawBuffer.length, 'байт');
+      } else if (req.body && typeof req.body === 'object') {
+        //? Если это уже объект, преобразуем в строку для обработки
+        rawText = JSON.stringify(req.body);
+        rawBuffer = Buffer.from(rawText, 'utf8');
+        console.log(
+          '  ✅ Используем req.body (object), преобразован в строку, размер:',
+          rawBuffer.length,
+          'байт'
+        );
+      } else {
+        console.log('  ⚠️ Тело запроса пусто или неизвестного типа');
+      }
     }
 
     //? Преобразуем в hex, если есть бинарные данные
@@ -134,20 +155,14 @@ exports.receiveData = async (req, res) => {
     console.log('  User-Agent:', userAgent || '(пусто)');
     console.log('  Referer:', referer || '(пусто)');
     console.log('  Origin:', origin || '(пусто)');
-    console.log(
-      '  IP:',
-      req.headers['x-real-ip'] || req.ip || req.connection.remoteAddress
-    );
+    console.log('  IP:', req.headers['x-real-ip'] || req.ip || req.connection.remoteAddress);
     console.log('  От Dashboard:', isFromDashboard);
     console.log('  От access.exe:', isFromAccessExe);
 
     //? Парсим данные как NDJSON (newline-delimited JSON)
     let parsedData = [];
     if (rawText) {
-      console.log(
-        'Raw текст (первые 500 символов):',
-        rawText.substring(0, 500)
-      );
+      console.log('Raw текст (первые 500 символов):', rawText.substring(0, 500));
 
       //? Пытаемся распарсить как NDJSON (каждая строка - отдельный JSON)
       parsedData = parseNDJSON(rawText);
@@ -171,17 +186,11 @@ exports.receiveData = async (req, res) => {
           } catch (e2) {
             console.error('Не удалось распарсить данные:', e2.message);
             //? Сохраняем как есть
-            parsedData = [
-              { raw: rawText.substring(0, 1000), error: 'Parse error' },
-            ];
+            parsedData = [{ raw: rawText.substring(0, 1000), error: 'Parse error' }];
           }
         }
       }
-    } else if (
-      req.body &&
-      typeof req.body === 'object' &&
-      !Array.isArray(req.body)
-    ) {
+    } else if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
       //? Если body уже объект (не массив), оборачиваем в массив
       parsedData = [req.body];
     } else if (Array.isArray(req.body)) {
@@ -198,11 +207,42 @@ exports.receiveData = async (req, res) => {
     }
     console.log('='.repeat(50));
 
+    //? Сохраняем данные в БД, если есть пользователь (данные от access.exe)
+    const user = res.locals.user;
+    if (user && user.id && isFromAccessExe && parsedData.length > 0) {
+      console.log('💾 Сохранение данных майнеров в БД для пользователя:', user.id);
+      try {
+        let savedCount = 0;
+        let errorCount = 0;
+
+        for (const minerData of parsedData) {
+          try {
+            await MinerService.saveMinerData(user.id, minerData);
+            savedCount++;
+          } catch (error) {
+            console.error('Ошибка при сохранении данных майнера:', error.message);
+            errorCount++;
+          }
+        }
+
+        console.log(`✅ Сохранено в БД: ${savedCount} майнеров, ошибок: ${errorCount}`);
+
+        // Выполняем очистку старых данных на основе настройки пользователя
+        try {
+          const retentionPeriod = user.historyRetentionPeriod || 'half-year';
+          await MinerService.cleanupOldMinerData(user.id, retentionPeriod);
+        } catch (cleanupError) {
+          console.warn('⚠️ Ошибка при очистке старых данных:', cleanupError.message);
+        }
+      } catch (dbError) {
+        console.error('❌ Ошибка при сохранении данных в БД:', dbError);
+        // Продолжаем выполнение, не прерываем обработку запроса
+      }
+    }
+
     //? Если это данные от access.exe, обновляем устройства по IP вместо дублирования
     if (isFromAccessExe) {
-      console.log(
-        '🎯 Получены данные от access.exe - обновляем устройства по IP'
-      );
+      console.log('🎯 Получены данные от access.exe - обновляем устройства по IP');
       try {
         // Получаем существующие данные из Redis
         const existingData = await RedisService.getList(REDIS_KEYS.DATA_ARRAY);
@@ -216,7 +256,9 @@ exports.receiveData = async (req, res) => {
 
         // Сначала удаляем дубликаты из существующих данных
         const uniqueRealData = removeDuplicateDevices(realData);
-        console.log(`📋 Было устройств: ${realData.length}, стало уникальных: ${uniqueRealData.length}`);
+        console.log(
+          `📋 Было устройств: ${realData.length}, стало уникальных: ${uniqueRealData.length}`
+        );
 
         // Добавляем существующие реальные устройства в Map (ключ - IP)
         for (const device of uniqueRealData) {
@@ -260,20 +302,12 @@ exports.receiveData = async (req, res) => {
 
         // Сначала добавляем реальные данные
         for (const item of updatedRealData) {
-          await RedisService.pushToList(
-            REDIS_KEYS.DATA_ARRAY,
-            item,
-            MAX_HISTORY_SIZE
-          );
+          await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
         }
 
         // Затем добавляем тестовые данные (если они есть)
         for (const item of testData) {
-          await RedisService.pushToList(
-            REDIS_KEYS.DATA_ARRAY,
-            item,
-            MAX_HISTORY_SIZE
-          );
+          await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
         }
       } catch (error) {
         console.error('Ошибка при обновлении устройств по IP:', error);
@@ -291,11 +325,7 @@ exports.receiveData = async (req, res) => {
     //? (для access.exe мы уже обработали выше)
     if (!isFromAccessExe) {
       for (const item of parsedData) {
-        await RedisService.pushToList(
-          REDIS_KEYS.DATA_ARRAY,
-          item,
-          MAX_HISTORY_SIZE
-        );
+        await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
       }
     }
 
@@ -312,12 +342,28 @@ exports.receiveData = async (req, res) => {
     await RedisService.increment(REDIS_KEYS.COUNTER_RECEIVE);
 
     //? Логируем сохранение данных
-    const dataArrayLength = await RedisService.getListLength(
-      REDIS_KEYS.DATA_ARRAY
-    );
+    const dataArrayLength = await RedisService.getListLength(REDIS_KEYS.DATA_ARRAY);
     console.log('✅ Данные сохранены в Redis:');
     console.log(`Всего объектов в истории: ${dataArrayLength}`);
     console.log('lastAccessTimestamp:', timestamp);
+
+    //? Получаем финальные данные для отправки клиентам
+    const finalDataArray = await RedisService.getList(REDIS_KEYS.DATA_ARRAY);
+    const realDataArray = finalDataArray.filter((d) => d.test !== true);
+    // Удаляем дубликаты из реальных данных
+    const uniqueRealDataArray = removeDuplicateDevices(realDataArray);
+    const hasRealData = uniqueRealDataArray.length > 0;
+    const dataToSend = hasRealData ? uniqueRealDataArray : finalDataArray;
+
+    //? Отправляем событие всем подключенным WebSocket клиентам
+    websocketService.broadcast('data-received', {
+      success: true,
+      message: 'Данные успешно получены и сохранены',
+      count: parsedData.length,
+      totalDevices: dataToSend.length,
+      timestamp: timestamp,
+      hasRealData: hasRealData,
+    });
 
     //? Отправляем успешный ответ
     res.status(200).json({
@@ -353,6 +399,13 @@ exports.clearData = async (req, res) => {
     await RedisService.delete(REDIS_KEYS.COUNTER_GET);
 
     console.log('✅ Все данные очищены из Redis');
+
+    //? Отправляем событие всем подключенным WebSocket клиентам
+    websocketService.broadcast('data-cleared', {
+      success: true,
+      message: 'Данные успешно очищены',
+      timestamp: new Date().toISOString(),
+    });
 
     res.status(200).json({
       message: 'Данные успешно очищены',
@@ -390,20 +443,12 @@ exports.removeDuplicates = async (req, res) => {
 
     // Сначала добавляем реальные данные
     for (const item of uniqueRealData) {
-      await RedisService.pushToList(
-        REDIS_KEYS.DATA_ARRAY,
-        item,
-        MAX_HISTORY_SIZE
-      );
+      await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
     }
 
     // Затем добавляем тестовые данные (если они есть)
     for (const item of testData) {
-      await RedisService.pushToList(
-        REDIS_KEYS.DATA_ARRAY,
-        item,
-        MAX_HISTORY_SIZE
-      );
+      await RedisService.pushToList(REDIS_KEYS.DATA_ARRAY, item, MAX_HISTORY_SIZE);
     }
 
     // Обновляем LAST_DATA, если это массив устройств
@@ -438,25 +483,55 @@ exports.removeDuplicates = async (req, res) => {
 exports.getLastData = async (req, res) => {
   try {
     //? Инкрементируем счетчик запросов
-    const getLastDataCount = await RedisService.increment(
-      REDIS_KEYS.COUNTER_GET
-    );
-
-    //? И Получаем данные из Redis
-    const lastAccessData = await RedisService.get(REDIS_KEYS.LAST_DATA);
-    const lastAccessDataArray = await RedisService.getList(
-      REDIS_KEYS.DATA_ARRAY
-    );
-    const lastAccessTimestamp = await RedisService.get(REDIS_KEYS.TIMESTAMP);
-    const lastHexData = await RedisService.get(REDIS_KEYS.HEX_DATA);
+    const getLastDataCount = await RedisService.increment(REDIS_KEYS.COUNTER_GET);
 
     //? Логируем запрос для отладки
     console.log('='.repeat(50));
     console.log(`📥 GET /api/access/last запрос #${getLastDataCount}:`);
-    console.log(
-      'lastAccessData:',
-      lastAccessData ? 'ЕСТЬ ДАННЫЕ' : 'НЕТ ДАННЫХ'
-    );
+
+    //? Пытаемся получить пользователя из res.locals (если есть авторизация)
+    const user = res.locals.user;
+
+    //? Если есть авторизованный пользователь, получаем данные из БД
+    if (user && user.id) {
+      console.log('🔍 Получение данных из БД для пользователя:', user.id);
+      try {
+        const dbData = await MinerService.getLatestMinersData(user.id);
+        const timestamp = new Date().toISOString();
+
+        console.log(`✅ Получено из БД: ${dbData.length} майнеров`);
+
+        if (dbData.length === 0) {
+          // Если в БД нет данных, пробуем получить из Redis
+          console.log('⚠️ В БД нет данных, пробуем получить из Redis');
+        } else {
+          const lastDataToReturn = dbData.length === 1 ? dbData[0] : dbData;
+          return res.status(200).json({
+            message: 'Последние данные от access.exe (из БД)',
+            data: lastDataToReturn,
+            allData: dbData,
+            count: dbData.length,
+            hexData: null,
+            timestamp: timestamp,
+            hasRealData: true,
+            hasTestData: false,
+            totalCount: dbData.length,
+            source: 'database',
+          });
+        }
+      } catch (dbError) {
+        console.error('❌ Ошибка при получении данных из БД:', dbError);
+        console.log('⚠️ Продолжаем с получением из Redis');
+      }
+    }
+
+    //? Получаем данные из Redis (обратная совместимость или если нет авторизации)
+    const lastAccessData = await RedisService.get(REDIS_KEYS.LAST_DATA);
+    const lastAccessDataArray = await RedisService.getList(REDIS_KEYS.DATA_ARRAY);
+    const lastAccessTimestamp = await RedisService.get(REDIS_KEYS.TIMESTAMP);
+    const lastHexData = await RedisService.get(REDIS_KEYS.HEX_DATA);
+
+    console.log('lastAccessData:', lastAccessData ? 'ЕСТЬ ДАННЫЕ' : 'НЕТ ДАННЫХ');
     console.log('Всего объектов в истории:', lastAccessDataArray.length);
 
     //? Фильтруем тестовые данные из ответа, если есть реальные данные
@@ -482,6 +557,7 @@ exports.getLastData = async (req, res) => {
         timestamp: null,
         hasRealData: false,
         hasTestData: false,
+        source: 'redis',
       });
     }
 
@@ -504,6 +580,7 @@ exports.getLastData = async (req, res) => {
       hasRealData: hasRealData,
       hasTestData: hasTestData,
       totalCount: lastAccessDataArray.length, //?    Общее количество (включая тестовые)
+      source: 'redis',
     });
   } catch (error) {
     console.error('Ошибка при получении последних данных:', error);
