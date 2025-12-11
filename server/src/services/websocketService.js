@@ -16,7 +16,7 @@ class WebSocketService {
       'http://localhost:5173',
       'http://localhost:5174',
       process.env.CLIENT_URL,
-      'https://mon.incoel.ru',
+      'https://mon.incfw.com',
     ].filter(Boolean);
 
     this.io = new Server(server, {

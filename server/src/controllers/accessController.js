@@ -148,7 +148,7 @@ exports.receiveData = async (req, res) => {
     const isFromDashboard =
       referer.includes('/dashboard') ||
       userAgent.includes('Mozilla') ||
-      origin.includes('mon.incoel.ru');
+      origin.includes('mon.incfw.com');
     const isFromAccessExe = !isFromDashboard;
 
     console.log('📡 Источник запроса:');
