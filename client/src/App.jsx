@@ -1,4 +1,9 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
@@ -26,6 +31,8 @@ const AppLayout = () => {
     return false;
   });
 
+  console.log('Test: ci/cd workflow is working successfully ===>>>');
+
   // Сохраняем состояние в localStorage при изменении
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', isSidebarCollapsed.toString());
@@ -40,24 +47,24 @@ const AppLayout = () => {
       <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
       <Header isSidebarCollapsed={isSidebarCollapsed} />
       <div
-        className="flex min-h-screen transition-all duration-300"
+        className='flex min-h-screen transition-all duration-300'
         style={{
           marginLeft: isSidebarCollapsed ? '80px' : '256px',
           marginTop: '73px', // Высота Header
         }}
       >
-        <div className="flex-1 flex flex-col w-full">
-          <main className="flex-1 bg-base-100 overflow-auto text-primary">
+        <div className='flex-1 flex flex-col w-full'>
+          <main className='flex-1 bg-base-100 overflow-auto text-primary'>
             <Routes>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/devices" element={<Devices />} />
-              <Route path="/pools" element={<Pools />} />
-              <Route path="/workers" element={<Workers />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/maintenance" element={<Maintenance />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path='/dashboard' element={<Dashboard />} />
+              <Route path='/devices' element={<Devices />} />
+              <Route path='/pools' element={<Pools />} />
+              <Route path='/workers' element={<Workers />} />
+              <Route path='/alerts' element={<Alerts />} />
+              <Route path='/maintenance' element={<Maintenance />} />
+              <Route path='/settings' element={<Settings />} />
+              <Route path='/profile' element={<Profile />} />
+              <Route path='/' element={<Navigate to='/dashboard' replace />} />
             </Routes>
           </main>
         </div>
@@ -70,12 +77,12 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
+        <div className='App'>
           <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path='/login' element={<Login />} />
+            <Route path='/register' element={<Register />} />
             <Route
-              path="/*"
+              path='/*'
               element={
                 <ProtectedRoute>
                   <AppLayout />

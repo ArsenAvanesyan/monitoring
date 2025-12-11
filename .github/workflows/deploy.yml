@@ -1,0 +1,201 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+  SSH_HOST: ${{ secrets.SSH_HOST }}
+  SSH_USER: ${{ secrets.SSH_USER }}
+  SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+  SSH_PORT: ${{ secrets.SSH_PORT }}
+  DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client
+          push: true
+          tags: ${{ env.DOCKERHUB_USERNAME }}/monitoring-frontend:latest,${{ env.DOCKERHUB_USERNAME }}/monitoring-frontend:${{ github.sha }}
+          platforms: linux/amd64
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-frontend:latest
+          cache-to: type=inline
+
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          push: true
+          tags: ${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest,${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:${{ github.sha }}
+          platforms: linux/amd64
+          cache-from: type=registry,ref=${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest
+          cache-to: type=inline
+
+  deploy:
+    name: Deploy to Server
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ env.SSH_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          ssh-keyscan -p ${{ env.SSH_PORT }} ${{ env.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create backup of current images
+        run: |
+          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+            echo "📦 Создаём резервную копию текущих образов..."
+            docker images --format "{{.Repository}}:{{.Tag}}" | grep "monitoring-frontend\|monitoring-backend" | while read image; do
+              if [ "$image" != "${{ env.DOCKERHUB_USERNAME }}/monitoring-frontend:latest" ] && [ "$image" != "${{ env.DOCKERHUB_USERNAME }}/monitoring-backend:latest" ]; then
+                docker tag "$image" "${image}-backup-$(date +%Y%m%d-%H%M%S)" || true
+              fi
+            done
+          EOF
+
+      - name: Pull new images
+        run: |
+          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+            echo "📥 Загружаем новые образы..."
+            DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
+            docker compose pull frontend backend || exit 1
+          EOF
+
+      - name: Stop old containers
+        run: |
+          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+            echo "🛑 Останавливаем старые контейнеры..."
+            DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
+            docker compose stop frontend backend || true
+          EOF
+
+      - name: Start new containers
+        run: |
+          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+            echo "🚀 Запускаем новые контейнеры..."
+            DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
+            POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
+            POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+            POSTGRES_DB="${{ secrets.POSTGRES_DB }}" \
+            ACCESS_TOKEN_SECRET="${{ secrets.ACCESS_TOKEN_SECRET }}" \
+            REFRESH_TOKEN_SECRET="${{ secrets.REFRESH_TOKEN_SECRET }}" \
+            SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+            CLIENT_URL="${{ secrets.CLIENT_URL }}" \
+            DOMAIN="${{ secrets.DOMAIN }}" \
+            EMAIL="${{ secrets.EMAIL }}" \
+            docker compose up -d --no-deps frontend backend || exit 1
+          EOF
+
+      - name: Restart nginx to reconnect
+        run: |
+          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+            echo "🔄 Перезапускаем nginx для переподключения к новым контейнерам..."
+            DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
+            DOMAIN="${{ secrets.DOMAIN }}" \
+            EMAIL="${{ secrets.EMAIL }}" \
+            docker compose restart nginx || exit 1
+            echo "✅ Nginx перезапущен"
+          EOF
+
+      - name: Wait for health check
+        run: |
+          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+            echo "⏳ Ждём проверки здоровья контейнеров (30 секунд)..."
+            sleep 30
+            
+            # Проверяем, что контейнеры запущены
+            if ! docker compose ps | grep -q "frontend.*Up\|backend.*Up"; then
+              echo "❌ Контейнеры не запустились!"
+              exit 1
+            fi
+            
+            echo "✅ Контейнеры запущены успешно"
+          EOF
+
+      - name: Cleanup old images
+        if: success()
+        run: |
+          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+            echo "🧹 Очищаем старые образы (кроме последних 3 версий)..."
+            
+            # Удаляем старые образы, оставляя последние 3 версии
+            docker images --format "{{.Repository}}:{{.Tag}}" | \
+              grep "monitoring-frontend\|monitoring-backend" | \
+              grep -v "latest" | \
+              grep -v "backup" | \
+              sort -r | \
+              tail -n +4 | \
+              xargs -r docker rmi -f || true
+            
+            # Удаляем старые backup образы (старше 7 дней)
+            docker images --format "{{.Repository}}:{{.Tag}} {{.CreatedAt}}" | \
+              grep "backup" | \
+              awk -v cutoff="$(date -d '7 days ago' +%Y-%m-%d)" '$2 < cutoff {print $1}' | \
+              xargs -r docker rmi -f || true
+            
+            # Общая очистка неиспользуемых образов
+            docker image prune -f || true
+            
+            echo "✅ Очистка завершена"
+          EOF
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          ssh -p ${{ env.SSH_PORT }} ${{ env.SSH_USER }}@${{ env.SSH_HOST }} << 'EOF'
+            cd ${{ env.DEPLOY_PATH }}
+            echo "🔄 Откат к предыдущей версии..."
+            
+            # Останавливаем новые контейнеры
+            docker compose stop frontend backend || true
+            docker compose rm -f frontend backend || true
+
+            # Перезапускаем старые версии (docker compose up подтянет старые образы)
+            DOCKERHUB_USERNAME="${{ env.DOCKERHUB_USERNAME }}" \
+            POSTGRES_USER="${{ secrets.POSTGRES_USER }}" \
+            POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}" \
+            POSTGRES_DB="${{ secrets.POSTGRES_DB }}" \
+            ACCESS_TOKEN_SECRET="${{ secrets.ACCESS_TOKEN_SECRET }}" \
+            REFRESH_TOKEN_SECRET="${{ secrets.REFRESH_TOKEN_SECRET }}" \
+            SECRET_KEY="${{ secrets.SECRET_KEY }}" \
+            CLIENT_URL="${{ secrets.CLIENT_URL }}" \
+            DOMAIN="${{ secrets.DOMAIN }}" \
+            EMAIL="${{ secrets.EMAIL }}" \
+            docker compose up -d frontend backend || true
+            
+            echo "⚠️ Откат выполнен - контейнеры перезапущены"
+          EOF

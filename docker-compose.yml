@@ -124,11 +124,11 @@ services:
       dockerfile: Dockerfile
     container_name: monitoring_nginx
     ports:
-      - '8080:80' # HTTP
-      - '8443:443' # HTTPS
+      - '80:80' # HTTP (временно для получения SSL)
+      - '443:443' # HTTPS (временно для получения SSL)
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d
+      # Убрали монтирование conf.d - entrypoint создаёт конфиг автоматически
       - certbot_data:/etc/letsencrypt
       - certbot_www:/var/www/certbot
     environment:
