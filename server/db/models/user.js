@@ -9,6 +9,10 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      User.hasMany(models.Miner, {
+        foreignKey: 'userId',
+        as: 'miners',
+      });
     }
   }
   User.init(
@@ -35,6 +39,12 @@ module.exports = (sequelize, DataTypes) => {
       lastTokenRefresh: {
         type: DataTypes.DATE,
         allowNull: true,
+      },
+      historyRetentionPeriod: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'half-year',
+        comment: 'Период хранения истории: year, half-year, 3months, 1month',
       },
     },
     {

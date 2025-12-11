@@ -1,4 +1,5 @@
 const RedisService = require('../services/redisService');
+const MinerService = require('../services/minerService');
 const { REDIS_KEYS, MAX_HISTORY_SIZE } = require('../consts/redis-keys');
 const bufferToHex = require('../utils/bufferToHex');
 const formatHex = require('../utils/formatHex');
@@ -174,6 +175,39 @@ exports.receiveData = async (req, res) => {
       }
     }
     console.log('='.repeat(50));
+
+    //? Сохраняем данные в БД, если есть пользователь (данные от access.exe)
+    const user = res.locals.user;
+    if (user && user.id && isFromAccessExe && parsedData.length > 0) {
+      console.log('💾 Сохранение данных майнеров в БД для пользователя:', user.id);
+      try {
+        let savedCount = 0;
+        let errorCount = 0;
+
+        for (const minerData of parsedData) {
+          try {
+            await MinerService.saveMinerData(user.id, minerData);
+            savedCount++;
+          } catch (error) {
+            console.error('Ошибка при сохранении данных майнера:', error.message);
+            errorCount++;
+          }
+        }
+
+        console.log(`✅ Сохранено в БД: ${savedCount} майнеров, ошибок: ${errorCount}`);
+
+        // Выполняем очистку старых данных на основе настройки пользователя
+        try {
+          const retentionPeriod = user.historyRetentionPeriod || 'half-year';
+          await MinerService.cleanupOldMinerData(user.id, retentionPeriod);
+        } catch (cleanupError) {
+          console.warn('⚠️ Ошибка при очистке старых данных:', cleanupError.message);
+        }
+      } catch (dbError) {
+        console.error('❌ Ошибка при сохранении данных в БД:', dbError);
+        // Продолжаем выполнение, не прерываем обработку запроса
+      }
+    }
 
     //? Если это данные от access.exe, обновляем устройства по IP вместо дублирования
     if (isFromAccessExe) {
@@ -395,15 +429,52 @@ exports.getLastData = async (req, res) => {
     //? Инкрементируем счетчик запросов
     const getLastDataCount = await RedisService.increment(REDIS_KEYS.COUNTER_GET);
 
-    //? И Получаем данные из Redis
+    //? Логируем запрос для отладки
+    console.log('='.repeat(50));
+    console.log(`📥 GET /api/access/last запрос #${getLastDataCount}:`);
+
+    //? Пытаемся получить пользователя из res.locals (если есть авторизация)
+    const user = res.locals.user;
+
+    //? Если есть авторизованный пользователь, получаем данные из БД
+    if (user && user.id) {
+      console.log('🔍 Получение данных из БД для пользователя:', user.id);
+      try {
+        const dbData = await MinerService.getLatestMinersData(user.id);
+        const timestamp = new Date().toISOString();
+
+        console.log(`✅ Получено из БД: ${dbData.length} майнеров`);
+
+        if (dbData.length === 0) {
+          // Если в БД нет данных, пробуем получить из Redis
+          console.log('⚠️ В БД нет данных, пробуем получить из Redis');
+        } else {
+          const lastDataToReturn = dbData.length === 1 ? dbData[0] : dbData;
+          return res.status(200).json({
+            message: 'Последние данные от access.exe (из БД)',
+            data: lastDataToReturn,
+            allData: dbData,
+            count: dbData.length,
+            hexData: null,
+            timestamp: timestamp,
+            hasRealData: true,
+            hasTestData: false,
+            totalCount: dbData.length,
+            source: 'database',
+          });
+        }
+      } catch (dbError) {
+        console.error('❌ Ошибка при получении данных из БД:', dbError);
+        console.log('⚠️ Продолжаем с получением из Redis');
+      }
+    }
+
+    //? Получаем данные из Redis (обратная совместимость или если нет авторизации)
     const lastAccessData = await RedisService.get(REDIS_KEYS.LAST_DATA);
     const lastAccessDataArray = await RedisService.getList(REDIS_KEYS.DATA_ARRAY);
     const lastAccessTimestamp = await RedisService.get(REDIS_KEYS.TIMESTAMP);
     const lastHexData = await RedisService.get(REDIS_KEYS.HEX_DATA);
 
-    //? Логируем запрос для отладки
-    console.log('='.repeat(50));
-    console.log(`📥 GET /api/access/last запрос #${getLastDataCount}:`);
     console.log('lastAccessData:', lastAccessData ? 'ЕСТЬ ДАННЫЕ' : 'НЕТ ДАННЫХ');
     console.log('Всего объектов в истории:', lastAccessDataArray.length);
 
@@ -430,6 +501,7 @@ exports.getLastData = async (req, res) => {
         timestamp: null,
         hasRealData: false,
         hasTestData: false,
+        source: 'redis',
       });
     }
 
@@ -452,6 +524,7 @@ exports.getLastData = async (req, res) => {
       hasRealData: hasRealData,
       hasTestData: hasTestData,
       totalCount: lastAccessDataArray.length, //?    Общее количество (включая тестовые)
+      source: 'redis',
     });
   } catch (error) {
     console.error('Ошибка при получении последних данных:', error);

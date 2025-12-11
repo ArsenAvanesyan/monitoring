@@ -198,12 +198,21 @@
     "dataRefresh": "Обновление данных",
     "autoRefresh": "Автообновление",
     "refreshInterval": "Интервал обновления (секунды)",
+    "historyRecording": "Запись истории",
+    "historyRetentionPeriod": "Период записи истории",
+    "historyRetentionDescription": "Записи старше выбранного периода будут автоматически удаляться",
+    "retentionYear": "Год",
+    "retentionHalfYear": "Полгода",
+    "retention3Months": "3 месяца",
+    "retention1Month": "1 месяц",
     "appearance": "Внешний вид",
     "theme": "Тема",
     "themeAuto": "Автоматически",
     "themeLight": "Светлая",
     "themeDark": "Тёмная",
-    "saveSettings": "Сохранить настройки"
+    "saveSettings": "Сохранить настройки",
+    "saveSuccess": "Настройки успешно сохранены",
+    "saveError": "Ошибка при сохранении настроек"
   },
   "profile": {
     "title": "Личный кабинет",

@@ -1,6 +1,7 @@
 const verifyAccessToken = require('../middleware/verifyAccessToken');
 const verifyRefreshToken = require('../middleware/verifyRefreshToken');
 const UserServices = require('../services/UserServices');
+const MinerService = require('../services/minerService');
 const { processImages } = require('../utils/upload');
 
 ((exports.updateUser = async (req, res) => {
@@ -14,6 +15,7 @@ const { processImages } = require('../utils/upload');
     // Основные поля профиля
     if ('login' in req.body) updateData.login = req.body.login;
     if ('email' in req.body) updateData.email = req.body.email;
+    if ('historyRetentionPeriod' in req.body) updateData.historyRetentionPeriod = req.body.historyRetentionPeriod;
 
     // Обработка пароля - требуется старый пароль для проверки
     if ('password' in req.body && req.body.password) {
@@ -49,6 +51,19 @@ const { processImages } = require('../utils/upload');
     if (!user) {
       return res.status(404).json({ message: 'Пользователь не найден' });
     }
+
+    // Если изменился период хранения истории, сразу выполняем очистку старых данных
+    if ('historyRetentionPeriod' in updateData) {
+      try {
+        const retentionPeriod = updateData.historyRetentionPeriod || user.historyRetentionPeriod || 'half-year';
+        const deletedCount = await MinerService.cleanupOldMinerData(res.locals.user.id, retentionPeriod);
+        console.log(`🧹 Очищено ${deletedCount} старых записей майнеров после изменения настройки периода хранения`);
+      } catch (cleanupError) {
+        console.warn('⚠️ Ошибка при очистке старых данных после изменения настройки:', cleanupError.message);
+        // Не прерываем выполнение, просто логируем предупреждение
+      }
+    }
+
     res.status(200).json({ user });
   } catch (error) {
     console.error('Ошибка обновления пользователя:', error);
