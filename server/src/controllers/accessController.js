@@ -4,6 +4,8 @@ const { REDIS_KEYS, MAX_HISTORY_SIZE } = require('../consts/redis-keys');
 const bufferToHex = require('../utils/bufferToHex');
 const formatHex = require('../utils/formatHex');
 const parseNDJSON = require('../utils/parseNDJSON');
+const { processGzipArchive } = require('../utils/gzipUtils');
+const websocketService = require('../services/websocketService');
 
 //? Функция для нормализации IP адреса (приводит к строке и убирает пробелы)
 const normalizeIp = (ip) => {
@@ -72,35 +74,64 @@ exports.receiveData = async (req, res) => {
     //? Получаем raw body как Buffer или строку
     let rawText = null;
     let rawBuffer = null;
+    const isGzip = req.isGzip || req.headers['content-type'] === 'application/gzip';
+    const filename = req.filename || req.headers['x-filename'] || null;
 
     console.log('🔍 Анализ тела запроса:');
     console.log('  req.rawBuffer существует:', !!req.rawBuffer);
     console.log('  req.body тип:', typeof req.body);
     console.log('  req.body является Buffer:', Buffer.isBuffer(req.body));
+    console.log('  Это gzip архив:', isGzip ? 'ДА' : 'НЕТ');
+    if (filename) {
+      console.log('  Имя файла:', filename);
+    }
 
-    if (req.rawBuffer && Buffer.isBuffer(req.rawBuffer)) {
-      rawBuffer = req.rawBuffer;
-      rawText = req.rawBuffer.toString('utf8');
-      console.log('  ✅ Используем req.rawBuffer, размер:', rawBuffer.length, 'байт');
-    } else if (req.body && Buffer.isBuffer(req.body)) {
-      rawBuffer = req.body;
-      rawText = req.body.toString('utf8');
-      console.log('  ✅ Используем req.body (Buffer), размер:', rawBuffer.length, 'байт');
-    } else if (typeof req.body === 'string') {
-      rawText = req.body;
-      rawBuffer = Buffer.from(req.body, 'utf8');
-      console.log('  ✅ Используем req.body (string), размер:', rawBuffer.length, 'байт');
-    } else if (req.body && typeof req.body === 'object') {
-      //? Если это уже объект, преобразуем в строку для обработки
-      rawText = JSON.stringify(req.body);
-      rawBuffer = Buffer.from(rawText, 'utf8');
-      console.log(
-        '  ✅ Используем req.body (object), преобразован в строку, размер:',
-        rawBuffer.length,
-        'байт'
-      );
+    //? Если это gzip архив - распаковываем
+    if (isGzip) {
+      try {
+        const gzipBuffer = req.rawBuffer || (req.body && Buffer.isBuffer(req.body) ? req.body : null);
+
+        if (!gzipBuffer) {
+          throw new Error('Не удалось получить gzip данные из запроса');
+        }
+
+        console.log('📦 Обнаружен gzip архив, начинаем распаковку...');
+        rawText = await processGzipArchive(gzipBuffer, filename);
+        rawBuffer = Buffer.from(rawText, 'utf8');
+        console.log('  ✅ Gzip архив распакован и обработан');
+      } catch (error) {
+        console.error('❌ Ошибка обработки gzip архива:', error);
+        return res.status(400).json({
+          error: 'Ошибка обработки gzip архива',
+          message: error.message,
+        });
+      }
     } else {
-      console.log('  ⚠️ Тело запроса пусто или неизвестного типа');
+      //? Обычная обработка (не gzip)
+      if (req.rawBuffer && Buffer.isBuffer(req.rawBuffer)) {
+        rawBuffer = req.rawBuffer;
+        rawText = req.rawBuffer.toString('utf8');
+        console.log('  ✅ Используем req.rawBuffer, размер:', rawBuffer.length, 'байт');
+      } else if (req.body && Buffer.isBuffer(req.body)) {
+        rawBuffer = req.body;
+        rawText = req.body.toString('utf8');
+        console.log('  ✅ Используем req.body (Buffer), размер:', rawBuffer.length, 'байт');
+      } else if (typeof req.body === 'string') {
+        rawText = req.body;
+        rawBuffer = Buffer.from(req.body, 'utf8');
+        console.log('  ✅ Используем req.body (string), размер:', rawBuffer.length, 'байт');
+      } else if (req.body && typeof req.body === 'object') {
+        //? Если это уже объект, преобразуем в строку для обработки
+        rawText = JSON.stringify(req.body);
+        rawBuffer = Buffer.from(rawText, 'utf8');
+        console.log(
+          '  ✅ Используем req.body (object), преобразован в строку, размер:',
+          rawBuffer.length,
+          'байт'
+        );
+      } else {
+        console.log('  ⚠️ Тело запроса пусто или неизвестного типа');
+      }
     }
 
     //? Преобразуем в hex, если есть бинарные данные
@@ -316,6 +347,24 @@ exports.receiveData = async (req, res) => {
     console.log(`Всего объектов в истории: ${dataArrayLength}`);
     console.log('lastAccessTimestamp:', timestamp);
 
+    //? Получаем финальные данные для отправки клиентам
+    const finalDataArray = await RedisService.getList(REDIS_KEYS.DATA_ARRAY);
+    const realDataArray = finalDataArray.filter((d) => d.test !== true);
+    // Удаляем дубликаты из реальных данных
+    const uniqueRealDataArray = removeDuplicateDevices(realDataArray);
+    const hasRealData = uniqueRealDataArray.length > 0;
+    const dataToSend = hasRealData ? uniqueRealDataArray : finalDataArray;
+
+    //? Отправляем событие всем подключенным WebSocket клиентам
+    websocketService.broadcast('data-received', {
+      success: true,
+      message: 'Данные успешно получены и сохранены',
+      count: parsedData.length,
+      totalDevices: dataToSend.length,
+      timestamp: timestamp,
+      hasRealData: hasRealData,
+    });
+
     //? Отправляем успешный ответ
     res.status(200).json({
       message: 'Данные успешно получены',
@@ -350,6 +399,13 @@ exports.clearData = async (req, res) => {
     await RedisService.delete(REDIS_KEYS.COUNTER_GET);
 
     console.log('✅ Все данные очищены из Redis');
+
+    //? Отправляем событие всем подключенным WebSocket клиентам
+    websocketService.broadcast('data-cleared', {
+      success: true,
+      message: 'Данные успешно очищены',
+      timestamp: new Date().toISOString(),
+    });
 
     res.status(200).json({
       message: 'Данные успешно очищены',
