@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'app',
       script: './src/app.js',
-      cwd: '/var/www/www-root/data/www/mon.incoel.ru/server',
+      cwd: '/var/www/www-root/data/www/mon.incfw.com/server',
       instances: 1,
       exec_mode: 'fork', // Используем fork вместо cluster
       autorestart: true,

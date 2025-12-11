@@ -4,7 +4,7 @@ const path = require('path');
 // Загружаем .env файл явно из директории server (абсолютный путь)
 // Пробуем несколько возможных путей
 const possiblePaths = [
-    '/var/www/www-root/data/www/mon.incoel.ru/server/.env',
+    '/var/www/www-root/data/www/mon.incfw.com/server/.env',
     path.join(__dirname, '../../.env'),
     path.join(process.cwd(), '.env'),
 ];

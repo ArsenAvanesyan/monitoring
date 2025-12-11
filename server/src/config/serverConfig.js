@@ -9,7 +9,7 @@ const corsConfig = {
   origin: [
     'http://localhost:5173',
     'http://localhost:8080',
-    'https://mon.incoel.ru:8443',
+    'https://mon.incfw.com',
     process.env.CLIENT_URL,
   ].filter(Boolean),
   credentials: true,
