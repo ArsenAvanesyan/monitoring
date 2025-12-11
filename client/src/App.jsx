@@ -31,7 +31,7 @@ const AppLayout = () => {
     return false;
   });
 
-  console.log('Test: ci/cd workflow is working successfully ===>>>');
+  console.log('Нормально делай, нормально будет ===>>>');
 
   // Сохраняем состояние в localStorage при изменении
   useEffect(() => {
