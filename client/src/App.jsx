@@ -14,6 +14,7 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 import Devices from './pages/Devices';
+import ScanPage from './pages/ScanPage';
 import Pools from './pages/Pools';
 import Workers from './pages/Workers';
 import Alerts from './pages/Alerts';
