@@ -47,7 +47,7 @@ class MinerService {
   }
 
   /**
-   * Сохранение данных майнера в БД
+   * Сохранение данных майнера в БД (всегда создает новую запись для истории)
    * @param {number} userId - ID пользователя
    * @param {Object} minerData - данные майнера от access.exe
    * @returns {Promise<Object>} сохраненная запись
@@ -68,7 +68,7 @@ class MinerService {
       const identifier = macAddress || ipAddress;
       const identifierField = macAddress ? 'macAddress' : 'ipAddress';
 
-      console.log(`💾 Сохранение данных майнера: ${identifierField}=${identifier}`);
+      console.log(`💾 Сохранение данных майнера в историю: ${identifierField}=${identifier}`);
 
       // Подготавливаем данные для сохранения
       const dataToSave = {
@@ -84,26 +84,13 @@ class MinerService {
         stats: minerData.stats || null,
         summ: minerData.summ || null,
         error: minerData.error || null,
-        recordedAt: new Date(),
+        recordedAt: new Date(), // Временная метка записи
       };
 
-      // Ищем существующую запись по MAC адресу (приоритет) или IP адресу
-      const whereCondition = macAddress
-        ? { userId, macAddress }
-        : { userId, ipAddress };
+      // ВСЕГДА создаем новую запись для истории (не обновляем существующую)
+      const miner = await Miner.create(dataToSave);
 
-      const [miner, created] = await Miner.findOrCreate({
-        where: whereCondition,
-        defaults: dataToSave,
-      });
-
-      if (!created) {
-        // Обновляем существующую запись
-        await miner.update(dataToSave);
-        console.log(`  ✅ Обновлена существующая запись майнера: ${identifier}`);
-      } else {
-        console.log(`  ✅ Создана новая запись майнера: ${identifier}`);
-      }
+      console.log(`  ✅ Создана новая запись в истории майнера: ${identifier} (ID: ${miner.id}, время: ${miner.recordedAt})`);
 
       return miner;
     } catch (error) {
@@ -272,9 +259,18 @@ class MinerService {
    * @param {string} macAddress - MAC адрес майнера (опционально)
    * @param {string} ipAddress - IP адрес майнера (опционально)
    * @param {number} limit - ограничение количества записей
+   * @param {Date} startDate - начальная дата для фильтрации (опционально)
+   * @param {Date} endDate - конечная дата для фильтрации (опционально)
    * @returns {Promise<Array>} массив исторических данных
    */
-  static async getMinerHistory(userId, macAddress = null, ipAddress = null, limit = 100) {
+  static async getMinerHistory(
+    userId,
+    macAddress = null,
+    ipAddress = null,
+    limit = 100,
+    startDate = null,
+    endDate = null
+  ) {
     try {
       const where = { userId };
 
@@ -284,15 +280,92 @@ class MinerService {
         where.ipAddress = ipAddress;
       }
 
+      // Фильтрация по датам для построения графиков
+      if (startDate || endDate) {
+        where.recordedAt = {};
+        if (startDate) {
+          where.recordedAt[Op.gte] = startDate;
+        }
+        if (endDate) {
+          where.recordedAt[Op.lte] = endDate;
+        }
+      }
+
       const history = await Miner.findAll({
         where,
-        order: [['recordedAt', 'DESC']],
-        limit,
+        order: [['recordedAt', 'ASC']], // Сортировка по возрастанию для графиков
+        limit: limit || undefined, // Если limit не указан, возвращаем все записи
       });
 
       return history.map((miner) => miner.get({ plain: true }));
     } catch (error) {
       console.error('❌ Ошибка при получении истории майнера:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Получение истории конкретного поля майнера для построения графиков
+   * @param {number} userId - ID пользователя
+   * @param {string} fieldPath - путь к полю (например, 'summ.SUMMARY[0].rate_avg' или 'stats.STATS[0].chain[0].temp_chip[0]')
+   * @param {string} macAddress - MAC адрес майнера (опционально)
+   * @param {string} ipAddress - IP адрес майнера (опционально)
+   * @param {Date} startDate - начальная дата для фильтрации (опционально)
+   * @param {Date} endDate - конечная дата для фильтрации (опционально)
+   * @returns {Promise<Array>} массив объектов { recordedAt, value } для графика
+   */
+  static async getMinerFieldHistory(
+    userId,
+    fieldPath,
+    macAddress = null,
+    ipAddress = null,
+    startDate = null,
+    endDate = null
+  ) {
+    try {
+      // Получаем полную историю
+      const history = await this.getMinerHistory(
+        userId,
+        macAddress,
+        ipAddress,
+        null, // Без лимита
+        startDate,
+        endDate
+      );
+
+      // Извлекаем значение поля из каждой записи
+      const fieldHistory = history.map((miner) => {
+        let value = null;
+
+        try {
+          // Парсим путь к полю (например, 'summ.SUMMARY[0].rate_avg')
+          const parts = fieldPath.split(/[\.\[\]]/).filter((p) => p);
+          value = miner;
+
+          for (const part of parts) {
+            if (part === '') continue;
+            const index = parseInt(part, 10);
+            if (!isNaN(index)) {
+              value = value?.[index];
+            } else {
+              value = value?.[part];
+            }
+            if (value === undefined || value === null) break;
+          }
+        } catch (error) {
+          console.warn(`⚠️ Не удалось извлечь поле ${fieldPath}:`, error.message);
+        }
+
+        return {
+          recordedAt: miner.recordedAt,
+          value: value !== undefined && value !== null ? Number(value) || value : null,
+        };
+      });
+
+      // Фильтруем записи с null значениями
+      return fieldHistory.filter((item) => item.value !== null);
+    } catch (error) {
+      console.error('❌ Ошибка при получении истории поля майнера:', error);
       throw error;
     }
   }
