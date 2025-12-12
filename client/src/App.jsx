@@ -14,7 +14,6 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Dashboard from './pages/Dashboard';
 import Devices from './pages/Devices';
-import ScanPage from './pages/ScanPage';
 import Pools from './pages/Pools';
 import Workers from './pages/Workers';
 import Alerts from './pages/Alerts';
@@ -59,7 +58,6 @@ const AppLayout = () => {
             <Routes>
               <Route path='/dashboard' element={<Dashboard />} />
               <Route path='/devices' element={<Devices />} />
-              <Route path='/scan' element={<ScanPage />} />
               <Route path='/pools' element={<Pools />} />
               <Route path='/workers' element={<Workers />} />
               <Route path='/alerts' element={<Alerts />} />

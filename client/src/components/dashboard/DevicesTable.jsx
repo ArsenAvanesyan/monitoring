@@ -1,7 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { convertMinersToDevices } from './utils/minerDataConverter';
+import {
+  parseDeviceData,
+  formatDeviceData,
+  formatValue,
+} from '../../shared/lib/deviceParser';
+import { flattenObject } from '../scan/ScanTable';
 import { useTimeAgo } from '../../hooks/useTimeAgo';
+import Checkbox from '../ui/Checkbox';
+import { useClipboard } from '../../hooks/useToClipboard';
+import { compareIp } from '../../utils/ipUtils';
+import { confFieldsList, apiFieldsList, firmwareList, serialNumberList } from '../scan/ColumnsModal';
 import {
   ChevronDownIcon,
   FilterIcon,
@@ -11,21 +21,163 @@ import {
   MenuDotsIcon,
 } from '../../svg/icons';
 
-const DevicesTable = ({ minersData = [], lastUpdateTimestamp = null }) => {
+// Компонент для мигающего текста
+const BlinkingText = ({ isOn, children }) => {
+  const [isSuccess, setIsSuccess] = useState(true);
+
+  useEffect(() => {
+    let interval;
+    if (isOn) {
+      interval = setInterval(() => {
+        setIsSuccess((prev) => !prev);
+      }, 200);
+    } else {
+      setIsSuccess(true);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isOn]);
+
+  const cls = isOn ? (isSuccess ? 'text-success' : 'text-error') : 'text-primary';
+  return <span className={cls}>{children}</span>;
+};
+
+const DevicesTable = ({
+  minersData = [],
+  lastUpdateTimestamp = null,
+  confEnabled = false,
+  confFields = [],
+  apiEnabled = true,
+  apiFields = [],
+  firmwareEnabled = true,
+  firmwareFields = [],
+  user = 'root',
+  password = 'root',
+}) => {
   const { t } = useTranslation();
+  const copy = useClipboard();
   const [selectedDevices, setSelectedDevices] = useState(new Set());
-  const [sortKey, setSortKey] = useState('name');
+  const [sortKey, setSortKey] = useState('ip');
   const [sortDirection, setSortDirection] = useState('asc');
   const [filterStatus, setFilterStatus] = useState(null);
   const [onlyActiveMiners, setOnlyActiveMiners] = useState(true);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
+  const [copiedCell, setCopiedCell] = useState(null);
 
   // Получаем время с момента последнего обновления
   const timeAgo = useTimeAgo(lastUpdateTimestamp);
 
-  // Преобразуем данные от access.exe в формат для таблицы
-  const devices = convertMinersToDevices(minersData);
+  // Парсим и форматируем данные устройств
+  const devices = useMemo(() => {
+    if (!minersData || minersData.length === 0) return [];
+
+    // Парсим сырые данные
+    const parsedData = minersData.map((item) => parseDeviceData(item));
+
+    // Форматируем для таблицы
+    return formatDeviceData(parsedData);
+  }, [minersData]);
+
+  // Исключаемые поля для динамических колонок
+  const exclude = new Set([
+    ...apiFieldsList.map((f) => f.key),
+    ...confFieldsList.map((f) => f.key),
+    'alive',
+    'alive1',
+    'alive2',
+    'serialNumber',
+    'firmware',
+    'blink',
+    'active',
+    'activation',
+    'bVersion',
+  ]);
+
+  // Определение колонок
+  const columns = useMemo(() => {
+    if (!devices.length) {
+      // Базовые колонки по умолчанию
+      return [
+        { key: 'ip', label: t('dashboard.ipAddress') || 'IP' },
+        { key: 'brand', label: t('dashboard.deviceModel') || 'Model' },
+        { key: 'status', label: t('common.status') || 'Status' },
+        { key: 'rate_avg', label: t('devices.hashrate') || 'Hashrate' },
+        { key: 'temp_chip', label: t('devices.temperature') || 'Temperature' },
+        { key: 'fan', label: t('dashboard.fanSpeed') || 'Fan' },
+      ];
+    }
+
+    const baseColumns = [
+      { key: 'ip', label: t('dashboard.ipAddress') || 'IP' },
+      { key: 'brand', label: t('dashboard.deviceModel') || 'Model' },
+      { key: 'status', label: t('common.status') || 'Status' },
+    ];
+
+    const seen = new Set(baseColumns.map((c) => c.key));
+    const dynamicCols = Object.keys(flattenObject(devices[0]))
+      .filter((key) => !seen.has(key) && !exclude.has(key))
+      .map((key) => {
+        let label;
+        switch (key) {
+          case 'url':
+            label = 'API URL';
+            break;
+          case 'url1':
+            label = 'API URL1';
+            break;
+          case 'url2':
+            label = 'API URL2';
+            break;
+          case 'user':
+            label = 'API User';
+            break;
+          case 'user1':
+            label = 'API User1';
+            break;
+          case 'user2':
+            label = 'API User2';
+            break;
+          case 'rate_avg':
+            label = t('devices.hashrate') || 'Hashrate';
+            break;
+          case 'temp_chip':
+            label = t('devices.temperature') || 'Temperature';
+            break;
+          case 'fan':
+            label = t('dashboard.fanSpeed') || 'Fan';
+            break;
+          default:
+            label = key
+              .replace(/_/g, ' ')
+              .replace(/(?:^|\s)\S/g, (a) => a.toUpperCase());
+        }
+        return { key, label };
+      });
+
+    const confCols =
+      confEnabled || confFields.length > 0
+        ? confFieldsList.filter((f) => confFields.includes(f.key))
+        : [];
+
+    const apiCols =
+      apiEnabled || apiFields.length > 0
+        ? apiFieldsList.filter((f) => apiFields.includes(f.key))
+        : [];
+
+    const serialCols =
+      firmwareEnabled && firmwareFields.includes('serialNumber') ? serialNumberList : [];
+
+    const firmwareCols =
+      firmwareEnabled || firmwareFields.length > 0
+        ? firmwareList
+            .filter((f) => firmwareFields.includes(f.key))
+            .filter((f) => f.key !== 'blink')
+        : [];
+
+    return [...baseColumns, ...dynamicCols, ...apiCols, ...confCols, ...serialCols, ...firmwareCols];
+  }, [devices, t, confEnabled, confFields, apiEnabled, apiFields, firmwareEnabled, firmwareFields]);
 
   // Table handlers
   const handleSort = (key) => {
@@ -41,16 +193,16 @@ const DevicesTable = ({ minersData = [], lastUpdateTimestamp = null }) => {
     if (selectedDevices.size === devices.length) {
       setSelectedDevices(new Set());
     } else {
-      setSelectedDevices(new Set(devices.map((d) => d.id)));
+      setSelectedDevices(new Set(devices.map((d) => d.ip)));
     }
   };
 
-  const handleSelectDevice = (id) => {
+  const handleSelectDevice = (ip) => {
     const newSelected = new Set(selectedDevices);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
+    if (newSelected.has(ip)) {
+      newSelected.delete(ip);
     } else {
-      newSelected.add(id);
+      newSelected.add(ip);
     }
     setSelectedDevices(newSelected);
   };
@@ -58,70 +210,46 @@ const DevicesTable = ({ minersData = [], lastUpdateTimestamp = null }) => {
   // Фильтрация и сортировка
   let filteredDevices = devices;
   if (filterStatus) {
-    filteredDevices = devices.filter((d) => d.status === filterStatus);
+    filteredDevices = devices.filter((d) => {
+      const status = d.status?.toString() || '';
+      return status === filterStatus || (filterStatus === 'online' && (status === '200' || status === 200));
+    });
   }
   // Фильтр "Только активные майнеры" (online и degraded)
   if (onlyActiveMiners) {
-    filteredDevices = filteredDevices.filter(
-      (d) => d.status === 'online' || d.status === 'degraded'
-    );
+    filteredDevices = filteredDevices.filter((d) => {
+      const status = d.status?.toString() || '';
+      return status === '200' || status === 200 || status === 'online' || status === 'degraded' || status === '401' || status === 401;
+    });
   }
-
-  // Функция для преобразования IP адреса в число для сортировки
-  const ipToNumber = (ip) => {
-    if (!ip || typeof ip !== 'string') return 0;
-    const parts = ip.split('.').map((part) => parseInt(part, 10));
-    if (parts.length !== 4 || parts.some(isNaN)) return 0;
-    // Преобразуем IP в число: a.b.c.d = a*256^3 + b*256^2 + c*256 + d
-    return parts[0] * 256 * 256 * 256 + parts[1] * 256 * 256 + parts[2] * 256 + parts[3];
-  };
 
   // Функция для получения значения для сортировки
   const getSortValue = (device, key) => {
-    switch (key) {
-      case 'name':
-        return device.name || '';
-      case 'model':
-        return device.model || '';
-      case 'status':
-        return device.status || '';
-      case 'hashrate':
-        return device.hashrate || 0;
-      case 'temperature':
-        return device.temperature || 0;
-      case 'fanSpeed':
-        return device.fanSpeed || 0;
-      case 'pool':
-        return device.pool || '';
-      case 'worker':
-        return device.worker || '';
-      case 'ipAddress':
-        // Преобразуем IP адрес в число для правильной сортировки
-        return ipToNumber(device.ipAddress);
-      case 'uptime':
-        // Парсим uptime для сортировки (например, "4d 20h" -> дни*24 + часы)
-        if (typeof device.uptime === 'string') {
-          const match = device.uptime.match(/(\d+)d\s*(\d+)h/);
-          if (match) {
-            return parseInt(match[1]) * 24 + parseInt(match[2]);
-          }
-          const hoursMatch = device.uptime.match(/(\d+)h/);
-          if (hoursMatch) {
-            return parseInt(hoursMatch[1]);
-          }
-        }
-        return 0;
-      default:
-        return device[key] || '';
+    const flat = flattenObject(device);
+    const value = flat[key] ?? '';
+
+    if (key === 'ip') {
+      return compareIp(device.ip || '', '');
     }
+
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return value;
+    return String(value);
   };
 
   const sortedDevices = [...filteredDevices].sort((a, b) => {
     if (!sortKey) return 0;
     const aVal = getSortValue(a, sortKey);
     const bVal = getSortValue(b, sortKey);
+
+    if (sortKey === 'ip') {
+      return sortDirection === 'asc' ? compareIp(a.ip, b.ip) : compareIp(b.ip, a.ip);
+    }
+
     if (typeof aVal === 'string' && typeof bVal === 'string') {
-      return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      return sortDirection === 'asc'
+        ? aVal.localeCompare(bVal, undefined, { numeric: true })
+        : bVal.localeCompare(aVal, undefined, { numeric: true });
     }
     if (typeof aVal === 'number' && typeof bVal === 'number') {
       return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
@@ -141,16 +269,51 @@ const DevicesTable = ({ minersData = [], lastUpdateTimestamp = null }) => {
   }, [filterStatus, itemsPerPage, onlyActiveMiners]);
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'online':
-        return <span className="badge badge-success badge-sm">{t('dashboard.online')}</span>;
-      case 'degraded':
-        return <span className="badge badge-warning badge-sm">{t('dashboard.degraded')}</span>;
-      case 'offline':
-        return <span className="badge badge-error badge-sm">{t('dashboard.offline')}</span>;
-      default:
-        return <span className="badge badge-ghost badge-sm">{status}</span>;
+    const statusStr = status?.toString() || '';
+    if (statusStr === '200' || statusStr === 200 || statusStr === 'online') {
+      return <span className="badge badge-success badge-sm">{t('dashboard.online')}</span>;
     }
+    if (statusStr === '401' || statusStr === 401 || statusStr === 'degraded') {
+      return <span className="badge badge-warning badge-sm">{t('dashboard.degraded')}</span>;
+    }
+    if (statusStr === '404' || statusStr === 404 || statusStr === 'offline' || statusStr === '4') {
+      return <span className="badge badge-error badge-sm">{t('dashboard.offline')}</span>;
+    }
+    return <span className="badge badge-ghost badge-sm">{statusStr}</span>;
+  };
+
+  const copyable = [
+    'url',
+    'user',
+    'url1',
+    'user1',
+    'url2',
+    'user2',
+    'chainSN',
+    'confUrl1',
+    'confUrl2',
+    'confUrl3',
+    'confUser1',
+    'confUser2',
+    'confUser3',
+    'hfUrl1',
+    'hfUrl2',
+    'hfUrl3',
+    'hfUser1',
+    'hfUser2',
+    'hfUser3',
+    'serialNumber',
+    'bVersion',
+  ];
+
+  const getUrlColorClass = (key, aliveVal) => {
+    if (!key.startsWith('url')) return '';
+    const val = String(aliveVal).toLowerCase();
+    const aliveStatuses = ['true', 'alive', 'in use', 'active', '1'];
+    const deadStatuses = ['false', 'dead', '-1', '0'];
+    if (aliveStatuses.includes(val)) return 'text-success';
+    if (deadStatuses.includes(val)) return 'text-error';
+    return 'text-gray-500';
   };
 
   if (devices.length === 0) {
@@ -356,161 +519,219 @@ const DevicesTable = ({ minersData = [], lastUpdateTimestamp = null }) => {
             <thead>
               <tr>
                 <th>
-                  <input
-                    type="checkbox"
-                    className="checkbox checkbox-sm input-info"
+                  <Checkbox
+                    color="info"
+                    rounded="md"
+                    className="h-5 w-5"
                     checked={selectedDevices.size === devices.length && devices.length > 0}
                     onChange={handleSelectAll}
                   />
                 </th>
-                <th className="cursor-pointer text-primary" onClick={() => handleSort('name')}>
-                  <div className="flex items-center gap-2">
-                    {t('dashboard.deviceModel')}
-                    {sortKey === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </div>
-                </th>
-                <th className="cursor-pointer text-primary" onClick={() => handleSort('status')}>
-                  <div className="flex items-center gap-2">
-                    {t('common.status')}
-                    {sortKey === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </div>
-                </th>
-                <th className="cursor-pointer text-primary" onClick={() => handleSort('hashrate')}>
-                  <div className="flex items-center gap-2">
-                    {t('devices.hashrate')}
-                    {sortKey === 'hashrate' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </div>
-                </th>
-                <th
-                  className="cursor-pointer text-primary"
-                  onClick={() => handleSort('temperature')}
-                >
-                  <div className="flex items-center gap-2">
-                    {t('devices.temperature')}
-                    {sortKey === 'temperature' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </div>
-                </th>
-                <th className="cursor-pointer text-primary" onClick={() => handleSort('fanSpeed')}>
-                  <div className="flex items-center gap-2">
-                    {t('dashboard.fanSpeed')}
-                    {sortKey === 'fanSpeed' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </div>
-                </th>
-                <th className="cursor-pointer text-primary" onClick={() => handleSort('pool')}>
-                  <div className="flex items-center gap-2">
-                    {t('dashboard.pool')}
-                    {sortKey === 'pool' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </div>
-                </th>
-                <th className="cursor-pointer text-primary" onClick={() => handleSort('worker')}>
-                  <div className="flex items-center gap-2">
-                    {t('dashboard.worker')}
-                    {sortKey === 'worker' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </div>
-                </th>
-                <th className="cursor-pointer text-primary" onClick={() => handleSort('ipAddress')}>
-                  <div className="flex items-center gap-2">
-                    {t('dashboard.ipAddress')}
-                    {sortKey === 'ipAddress' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </div>
-                </th>
-                <th className="cursor-pointer text-primary" onClick={() => handleSort('uptime')}>
-                  <div className="flex items-center gap-2">
-                    {t('dashboard.uptime')}
-                    {sortKey === 'uptime' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </div>
-                </th>
+                {columns.map((col) => (
+                  <th
+                    key={col.key}
+                    className="cursor-pointer text-primary"
+                    onClick={() => handleSort(col.key)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {col.label}
+                      {sortKey === col.key && (sortDirection === 'asc' ? '↑' : '↓')}
+                    </div>
+                  </th>
+                ))}
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {paginatedDevices.map((device) => (
-                <tr
-                  key={device.id}
-                  className={`hover ${device.status === 'offline' ? 'opacity-60' : ''}`}
-                >
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      className="checkbox checkbox-sm input-info"
-                      checked={selectedDevices.has(device.id)}
-                      onChange={() => handleSelectDevice(device.id)}
-                    />
-                  </td>
-                  <td>
-                    <div>
-                      <p className="font-semibold text-primary">{device.name}</p>
-                      <p className="text-xs text-primary">{device.model}</p>
-                    </div>
-                  </td>
-                  <td>{getStatusBadge(device.status)}</td>
-                  <td>
-                    <span className="text-primary">
-                      {device.hashrate > 0
-                        ? `${device.hashrate.toFixed(2)} ${device.hashrateUnit}`
-                        : '—'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <span className="text-primary">
-                        {device.temperature > 0 ? `${device.temperature}°C` : '—'}
-                      </span>
-                      {device.temperature > 75 && (
-                        <span className="h-2 w-2 rounded-full bg-warning"></span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <span className="text-primary">
-                      {device.fanSpeed > 0 ? `${device.fanSpeed.toLocaleString()} RPM` : '—'}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="text-primary">{device.pool}</span>
-                  </td>
-                  <td>
-                    <span className="text-primary">{device.worker}</span>
-                  </td>
-                  <td>
-                    <span className="font-mono text-xs text-primary">{device.ipAddress}</span>
-                  </td>
-                  <td>
-                    <span className="text-primary">{device.uptime}</span>
-                  </td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <div className="dropdown dropdown-end">
-                      <div tabIndex={0} role="button" className="btn btn-ghost btn-xs btn-circle">
-                        <MenuDotsIcon className="w-4 h-4" />
+              {paginatedDevices.map((device) => {
+                const flat = flattenObject(device);
+                const statusStr = device.status?.toString() || '';
+                const isOffline = statusStr === '404' || statusStr === 404 || statusStr === 'offline' || statusStr === '4';
+
+                return (
+                  <tr
+                    key={device.ip}
+                    className={`hover ${isOffline ? 'opacity-60' : ''}`}
+                  >
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        color="info"
+                        rounded="md"
+                        className="h-5 w-5"
+                        checked={selectedDevices.has(device.ip)}
+                        onChange={() => handleSelectDevice(device.ip)}
+                      />
+                    </td>
+                    {columns.map((col) => {
+                      const v = flat[col.key];
+
+                      // IP link с поддержкой blink
+                      if (col.key === 'ip') {
+                        const isBlink = Boolean(flat.blink);
+                        const isBlinkEnabled = firmwareFields.includes('blink');
+                        return (
+                          <td
+                            key={col.key}
+                            className="cursor-pointer ip-link font-mono text-xs text-primary hover:underline decoration-primary"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const url = `http://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${v}/`;
+                              window.open(url, '_blank');
+                            }}
+                          >
+                            {isBlink && isBlinkEnabled ? (
+                              <BlinkingText isOn={isBlink}>{String(v || '-')}</BlinkingText>
+                            ) : (
+                              String(v || '-')
+                            )}
+                          </td>
+                        );
+                      }
+
+                      // Status badge
+                      if (col.key === 'status') {
+                        return <td key={col.key}>{getStatusBadge(device.status)}</td>;
+                      }
+
+                      // Copyable cells
+                      if (copyable.includes(col.key)) {
+                        const cellId = `${device.ip}-${col.key}`;
+                        const isUrl = col.key.startsWith('url');
+                        let urlColorClass = '';
+
+                        if (isUrl) {
+                          const aliveKey =
+                            col.key === 'url'
+                              ? 'alive'
+                              : col.key === 'url1'
+                                ? 'alive1'
+                                : 'alive2';
+                          urlColorClass = getUrlColorClass(col.key, flat[aliveKey]);
+                        }
+
+                        return (
+                          <td
+                            key={col.key}
+                            className={`relative copyable-cell px-2 py-1 whitespace-nowrap cursor-pointer ${
+                              copiedCell === cellId
+                                ? 'underline decoration-primary'
+                                : 'hover:underline decoration-info'
+                            } ${urlColorClass}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              copy(String(v ?? ''));
+                              setCopiedCell(cellId);
+                              setTimeout(() => setCopiedCell(null), 800);
+                            }}
+                            title={String(v ?? '-')}
+                          >
+                            {formatValue(v)}
+                            {copiedCell === cellId && (
+                              <div className="absolute z-20 top-1 left-1/2 transform -translate-x-1/2 -translate-y-full p-2 bg-info text-success-content text-xs rounded shadow-lg whitespace-nowrap">
+                                {t('additional.copied') || 'Скопировано'}
+                              </div>
+                            )}
+                          </td>
+                        );
+                      }
+
+                      // Work Mode
+                      if (col.key === 'workMode') {
+                        const workModeValue = String(v);
+                        let displayValue;
+                        if (workModeValue === '0' || workModeValue === '2') {
+                          displayValue = t('action.onOff') || 'On/Off';
+                        } else if (workModeValue === '1') {
+                          displayValue = t('action.offOn') || 'Off/On';
+                        } else {
+                          displayValue = formatValue(v);
+                        }
+                        return (
+                          <td key={col.key} className="px-2 py-1 whitespace-nowrap">
+                            {displayValue}
+                          </td>
+                        );
+                      }
+
+                      // Freq Mode
+                      if (col.key === 'freqMode') {
+                        const freqModeValue = String(v);
+                        let displayValue;
+                        if (freqModeValue === '0') {
+                          displayValue = t('tools.table.workModeGeneral') || 'General';
+                        } else if (freqModeValue === '1') {
+                          displayValue = t('tools.table.workModeBoard') || 'Board';
+                        } else {
+                          displayValue = formatValue(v);
+                        }
+                        return (
+                          <td key={col.key} className="px-2 py-1 whitespace-nowrap">
+                            {displayValue}
+                          </td>
+                        );
+                      }
+
+                      // Temperature с индикатором
+                      if (col.key === 'temp_chip') {
+                        const tempValue = String(v);
+                        const tempNum = parseFloat(tempValue.split('/')[0]) || 0;
+                        return (
+                          <td key={col.key} className="px-2 py-1 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className="text-primary">{formatValue(v)}</span>
+                              {tempNum > 75 && (
+                                <span className="h-2 w-2 rounded-full bg-warning"></span>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      }
+
+                      // Default rendering
+                      return (
+                        <td
+                          key={col.key}
+                          title={String(v ?? '-')}
+                          className="px-2 py-1 whitespace-nowrap text-primary"
+                        >
+                          {formatValue(v)}
+                        </td>
+                      );
+                    })}
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <div className="dropdown dropdown-end">
+                        <div tabIndex={0} role="button" className="btn btn-ghost btn-xs btn-circle">
+                          <MenuDotsIcon className="w-4 h-4" />
+                        </div>
+                        <ul
+                          tabIndex={0}
+                          className="dropdown-content menu bg-base-200 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300"
+                        >
+                          <li>
+                            <button>{t('dashboard.viewDetails')}</button>
+                          </li>
+                          <li>
+                            <button>{t('dashboard.rebootDevice')}</button>
+                          </li>
+                          <li>
+                            <button>{t('dashboard.changePools')}</button>
+                          </li>
+                          <li>
+                            <button>{t('dashboard.restartMiner')}</button>
+                          </li>
+                          <li className="divider"></li>
+                          <li>
+                            <button>{t('dashboard.viewLogs')}</button>
+                          </li>
+                          <li>
+                            <button className="text-error">{t('dashboard.pauseMining')}</button>
+                          </li>
+                        </ul>
                       </div>
-                      <ul
-                        tabIndex={0}
-                        className="dropdown-content menu bg-base-200 rounded-box z-[1] w-52 p-2 shadow-lg border border-base-300"
-                      >
-                        <li>
-                          <button>{t('dashboard.viewDetails')}</button>
-                        </li>
-                        <li>
-                          <button>{t('dashboard.rebootDevice')}</button>
-                        </li>
-                        <li>
-                          <button>{t('dashboard.changePools')}</button>
-                        </li>
-                        <li>
-                          <button>{t('dashboard.restartMiner')}</button>
-                        </li>
-                        <li className="divider"></li>
-                        <li>
-                          <button>{t('dashboard.viewLogs')}</button>
-                        </li>
-                        <li>
-                          <button className="text-error">{t('dashboard.pauseMining')}</button>
-                        </li>
-                      </ul>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
