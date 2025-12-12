@@ -82,6 +82,9 @@ const Dashboard = () => {
   // (они используют старый формат через convertMinersToDevices)
   const devices = convertMinersToDevices(accessDataArray);
 
+  console.log("devices ---→", devices);
+  
+
   // Проверяем наличие данных
   const hasData = accessDataArray.length > 0;
 
