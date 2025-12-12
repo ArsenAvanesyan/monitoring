@@ -59,6 +59,7 @@ const AppLayout = () => {
             <Routes>
               <Route path='/dashboard' element={<Dashboard />} />
               <Route path='/devices' element={<Devices />} />
+              <Route path='/scan' element={<ScanPage />} />
               <Route path='/pools' element={<Pools />} />
               <Route path='/workers' element={<Workers />} />
               <Route path='/alerts' element={<Alerts />} />
