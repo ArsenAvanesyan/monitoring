@@ -5,19 +5,88 @@ import accessService from '../services/accessService';
 import DevicesTable from '../components/dashboard/DevicesTable';
 import KPICards from '../components/dashboard/KPICards';
 import ChartsSection from '../components/dashboard/ChartsSection';
+import ColumnsModal from '../components/scan/ColumnsModal';
 import { convertMinersToDevices } from '../components/dashboard/utils/minerDataConverter';
+import { apiFieldsList } from '../components/scan/ColumnsModal';
 
 const Dashboard = () => {
   const { t } = useTranslation();
   const [timeRange, setTimeRange] = useState('24h');
   const [accessDataArray, setAccessDataArray] = useState([]);
   const [lastUpdateTimestamp, setLastUpdateTimestamp] = useState(null);
+  const [isColumnsModalOpen, setIsColumnsModalOpen] = useState(false);
 
-  // Преобразуем данные от access.exe в формат устройств
+  // Настройки колонок из localStorage
+  const [apiEnabled, setApiEnabled] = useState(() => {
+    const stored = localStorage.getItem('apiEnabled');
+    return stored !== null ? JSON.parse(stored) : true;
+  });
+
+  const [apiFields, setApiFields] = useState(() => {
+    const stored = localStorage.getItem('apiFields');
+    if (stored) return JSON.parse(stored);
+    return apiFieldsList
+      .map((f) => f.key)
+      .filter(
+        (key) =>
+          !['fan', 'chain_num', 'chainSN', 'rate_30m', 'brand', 'subtype'].includes(key)
+      );
+  });
+
+  const [confEnabled, setConfEnabled] = useState(() => {
+    const stored = localStorage.getItem('confEnabled');
+    return stored !== null ? JSON.parse(stored) : false;
+  });
+
+  const [confFields, setConfFields] = useState(() => {
+    const stored = localStorage.getItem('confFields');
+    return stored ? JSON.parse(stored) : [];
+  });
+
+  const [firmwareEnabled, setFirmwareEnabled] = useState(() => {
+    const stored = localStorage.getItem('firmwareEnabled');
+    return stored !== null ? JSON.parse(stored) : true;
+  });
+
+  const [firmwareFields, setFirmwareFields] = useState(() => {
+    const stored = localStorage.getItem('firmwareFields');
+    return stored ? JSON.parse(stored) : ['serialNumber', 'bVersion', 'blink'];
+  });
+
+  // Сохранение настроек в localStorage
+  useEffect(() => {
+    localStorage.setItem('apiEnabled', JSON.stringify(apiEnabled));
+  }, [apiEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('apiFields', JSON.stringify(apiFields));
+  }, [apiFields]);
+
+  useEffect(() => {
+    localStorage.setItem('confEnabled', JSON.stringify(confEnabled));
+  }, [confEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('confFields', JSON.stringify(confFields));
+  }, [confFields]);
+
+  useEffect(() => {
+    localStorage.setItem('firmwareEnabled', JSON.stringify(firmwareEnabled));
+  }, [firmwareEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('firmwareFields', JSON.stringify(firmwareFields));
+  }, [firmwareFields]);
+
+  // Преобразуем данные от access.exe в формат устройств для KPICards и ChartsSection
+  // (они используют старый формат через convertMinersToDevices)
   const devices = convertMinersToDevices(accessDataArray);
 
+  console.log("devices ---→", devices);
+  
+
   // Проверяем наличие данных
-  const hasData = devices.length > 0;
+  const hasData = accessDataArray.length > 0;
 
   // Загрузка данных от access.exe
   const fetchAccessData = async () => {
@@ -203,7 +272,46 @@ const Dashboard = () => {
             {/* Charts Section */}
             <ChartsSection timeRange={timeRange} onTimeRangeChange={setTimeRange} />
             {/* Devices Table - использует данные от access.exe */}
-            <DevicesTable minersData={accessDataArray} lastUpdateTimestamp={lastUpdateTimestamp} />
+            <div className="relative">
+              <DevicesTable
+                minersData={accessDataArray}
+                lastUpdateTimestamp={lastUpdateTimestamp}
+                confEnabled={confEnabled}
+                confFields={confFields}
+                apiEnabled={apiEnabled}
+                apiFields={apiFields}
+                firmwareEnabled={firmwareEnabled}
+                firmwareFields={firmwareFields}
+              />
+
+              {/* Кнопка для открытия модального окна фильтра колонок */}
+              <div className="flex justify-end mt-4">
+                <button
+                  className="btn btn-info btn-sm"
+                  onClick={() => setIsColumnsModalOpen(true)}
+                >
+                  {t('scan.filterColumns') || 'Фильтр колонок'}
+                </button>
+              </div>
+            </div>
+
+            {/* Модальное окно фильтра колонок */}
+            <ColumnsModal
+              isOpen={isColumnsModalOpen}
+              onClose={() => setIsColumnsModalOpen(false)}
+              apiEnabled={apiEnabled}
+              setApiEnabled={setApiEnabled}
+              apiFields={apiFields}
+              setApiFields={setApiFields}
+              confEnabled={confEnabled}
+              setConfEnabled={setConfEnabled}
+              confFields={confFields}
+              setConfFields={setConfFields}
+              firmwareEnabled={firmwareEnabled}
+              setFirmwareEnabled={setFirmwareEnabled}
+              firmwareFields={firmwareFields}
+              setFirmwareFields={setFirmwareFields}
+            />
           </>
         ) : (
           <div className="card bg-base-200 shadow-xl border border-secondary">

@@ -1,24 +1,35 @@
 /**
- * @deprecated Используйте import { parseDeviceData } from '../shared/lib/deviceParser'
- * Этот файл оставлен для обратной совместимости
+ * Парсинг данных сканирования устройств
+ * Преобразует сырые данные от access.exe в стандартизированный формат
  */
-export { parseDeviceData } from '../shared/lib/deviceParser';
+
+/**
+ * Форматирование времени работы устройства
+ * @param {number} ms - время в миллисекундах
+ * @returns {string} отформатированное время
+ */
+const formatElapsedTime = (ms) => {
+  if (!ms || isNaN(ms)) return '-';
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n) => n.toString().padStart(2, '0');
+  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+};
+
+/**
+ * Парсинг данных устройства
+ * @param {Object} data - сырые данные от access.exe
+ * @returns {Object} стандартизированные данные устройства
+ */
+export const parseDeviceData = (data) => {
   if (!data.dtype || (data.dtype === 'unknow' && !data.stats && !data.devs)) {
     return { ip: data.ip, brand: 'No Data', status: data.st?.toString() };
   }
 
   const dtype = data.dtype || 'std';
   const result = { ip: data.ip };
-
-  const formatElapsedTime = (ms) => {
-    if (!ms || isNaN(ms)) return '-';
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const pad = (n) => n.toString().padStart(2, '0');
-    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-  };
 
   switch (dtype) {
     case 'std': {

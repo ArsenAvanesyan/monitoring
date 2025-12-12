@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import ScanTable from '../components/scan/ScanTable';
 import ColumnsModal from '../components/scan/ColumnsModal';
 import Checkbox from '../components/ui/Checkbox';
-import { parseDeviceData } from '../utils/parseDeviceData';
+import { parseDeviceData } from '../shared/lib/deviceParser';
 import accessService from '../services/accessService';
 import { apiFieldsList } from '../components/scan/ColumnsModal';
 
