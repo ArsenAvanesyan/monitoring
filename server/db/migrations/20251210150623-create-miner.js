@@ -23,7 +23,7 @@ module.exports = {
       macAddress: {
         type: Sequelize.STRING,
         allowNull: false,
-        comment: 'MAC адрес майнера (уникальный идентификатор)',
+        comment: 'MAC адрес майнера (не уникален, для истории изменений)',
       },
       ipAddress: {
         type: Sequelize.STRING,
