@@ -209,6 +209,12 @@ exports.receiveData = async (req, res) => {
 
     //? Сохраняем данные в БД, если есть пользователь (данные от access.exe)
     const user = res.locals.user;
+    console.log('🔍 Проверка условий для сохранения в БД:');
+    console.log('  user:', user ? `ID=${user.id}, login=${user.login || user.email}` : 'НЕТ');
+    console.log('  user.id:', user?.id || 'НЕТ');
+    console.log('  isFromAccessExe:', isFromAccessExe);
+    console.log('  parsedData.length:', parsedData.length);
+
     if (user && user.id && isFromAccessExe && parsedData.length > 0) {
       console.log('💾 Сохранение данных майнеров в БД для пользователя:', user.id);
       try {
@@ -220,7 +226,8 @@ exports.receiveData = async (req, res) => {
             await MinerService.saveMinerData(user.id, minerData);
             savedCount++;
           } catch (error) {
-            console.error('Ошибка при сохранении данных майнера:', error.message);
+            console.error('❌ Ошибка при сохранении данных майнера:', error.message);
+            console.error('  Stack:', error.stack);
             errorCount++;
           }
         }
@@ -236,8 +243,15 @@ exports.receiveData = async (req, res) => {
         }
       } catch (dbError) {
         console.error('❌ Ошибка при сохранении данных в БД:', dbError);
+        console.error('  Stack:', dbError.stack);
         // Продолжаем выполнение, не прерываем обработку запроса
       }
+    } else {
+      console.log('⚠️ Данные НЕ будут сохранены в БД:');
+      if (!user) console.log('  - Пользователь не найден в res.locals.user');
+      if (!user?.id) console.log('  - У пользователя нет ID');
+      if (!isFromAccessExe) console.log('  - Запрос не от access.exe (isFromAccessExe=false)');
+      if (parsedData.length === 0) console.log('  - Нет данных для сохранения (parsedData пуст)');
     }
 
     //? Если это данные от access.exe, обновляем устройства по IP вместо дублирования
